@@ -1,0 +1,15 @@
+{
+  "title": "Create a New Project",
+  "type": "object",
+  "required": ["projectName"],
+  "properties": {
+    "projectName": {
+      "type": "string",
+      "title": "Project Name"
+    },
+    "budget": {
+      "type": "number",
+      "title": "Budget ($)"
+    }
+  }
+}
