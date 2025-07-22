@@ -41,3 +41,19 @@ Tells the frontend how to display data for a "Read" or "List" view.
 Create/Update Form Schema:
 
 Tells the frontend what input fields and data are required for "Create" and "Update" forms.
+
+5. Testing
+a) open server:
+- from root run: cd ./apps/backend
+- npm run dev
+
+b) run services:
+- open another terminal
+- from root run: cd ./mockServices
+- run: node mockUmsService.js
+- repeat for all service in mockServices
+
+c) run client to send request:
+- open another terminal
+- from root run: cd ./testClient
+- run: node client.js
