@@ -1,103 +1,55 @@
-// client.js - A script to test our Admin Panel Facade API
-
 const axios = require('axios');
 
-// --- Configuration ---
-const BASE_URL = 'http://localhost:8080/api/v1';
-const API_KEY = 'my-secret-key'; // This should match your .env file
+const ADMIN_API_URL = 'http://localhost:8080/api/v1';
+const ADMIN_API_KEY = 'my-secret-key';
 
-// Create an axios instance with default settings for our client
-const apiClient = axios.create({
-  baseURL: BASE_URL,
-  headers: {
-    'x-api-key': API_KEY,
-    'Content-Type': 'application/json',
-  },
+// Create an API client for our Admin Facade
+const adminApiClient = axios.create({
+  baseURL: ADMIN_API_URL,
+  headers: { 'x-api-key': ADMIN_API_KEY },
 });
 
-// --- Helper Functions for Logging ---
-const log = (message) => console.log(`\n--- ${message} ---`);
-const logSuccess = (data) => console.log('✅ SUCCESS:', JSON.stringify(data, null, 2));
-const logError = (error) => {
-  if (error.response) {
-    // The request was made and the server responded with a status code
-    // that falls out of the range of 2xx
-    console.error('❌ FAILED with status:', error.response.status);
-    console.error('   Error data:', JSON.stringify(error.response.data, null, 2));
-  } else if (error.request) {
-    // The request was made but no response was received
-    console.error('❌ FAILED: No response received from server.');
-  } else {
-    // Something happened in setting up the request that triggered an Error
-    console.error('❌ FAILED with error:', error.message);
-  }
-};
+// This simulates the entire process a UI would go through
+async function runDemo() {
+  console.log('--- DEMO: Managing Projects ---');
 
-// --- Test Definitions ---
-const tests = [
-  // Test 1: Unauthorized request (should fail)
-  async () => {
-    log('Test 1: Unauthorized Request (expect 401)');
-    // Temporarily create a client with NO api key
-    const unauthorizedClient = axios.create({ baseURL: BASE_URL });
-    await unauthorizedClient.get('/users');
-  },
+  // 1. UI needs to build the "Create Project" form. It asks the Facade for the schema.
+  console.log('\n1. Fetching schema for "create project" action...');
+  const createSchemaResponse = await adminApiClient.get('/schemas/projectmaster/projects/create');
+  const createSchema = createSchemaResponse.data;
+  console.log('   -> Received Schema Title:', createSchema.title);
+  console.log('   -> Required Fields:', createSchema.required);
 
-  // Test 2: Get Project Data
-  async () => {
-    log('Test 2: Get All Projects');
-    const response = await apiClient.get('/projects');
-    return response.data;
-  },
+  // 2. UI uses the schema to build a form. User fills it out. UI sends the data.
+  const newProjectData = { name: 'New Marketing Campaign' };
+  console.log(`\n2. Executing "create project" action with data:`, newProjectData);
+  const createResponse = await adminApiClient.post('/projectmaster/projects/create', newProjectData);
+  console.log('   -> Received new project:', createResponse.data);
 
-  // Test 3: Get User Data
-  async () => {
-    log('Test 3: Get All Users');
-    const response = await apiClient.get('/users');
-    return response.data;
-  },
+  // 3. UI needs to display a list of all projects. It asks for the list schema first.
+  console.log('\n3. Fetching schema for "list projects" action...');
+  const listSchemaResponse = await adminApiClient.get('/schemas/projectmaster/projects/list');
+  const listSchema = listSchemaResponse.data;
+  console.log('   -> Received Schema Title:', listSchema.title);
 
-  // Test 4: Get Static Schema (Project List)
-  async () => {
-    log('Test 4: Get Project List Schema (Static)');
-    const response = await apiClient.get('/schemas/projects/list');
-    return response.data;
-  },
+  // 4. UI executes the list action to get the data.
+  console.log('\n4. Executing "list projects" action...');
+  const listResponse = await adminApiClient.get('/projectmaster/projects/list');
+  console.log('   -> Received project list:', listResponse.data);
 
-  // Test 5: Get Dynamic Schema (User List)
-  async () => {
-    log('Test 5: Get User List Schema (Dynamic)');
-    const response = await apiClient.get('/schemas/users/user-list');
-    return response.data;
-  },
-
-  // Test 6: Create a New Project
-  async () => {
-    log('Test 6: Create a New Project');
-    const newProjectData = {
-      projectName: 'Client.js Test Project',
-      budget: 12345,
-    };
-    const response = await apiClient.post('/projects', newProjectData);
-    return response.data;
-  },
-];
-
-// --- Test Runner ---
-async function runTests() {
-  console.log('🚀 Starting API tests for the Admin Panel Facade...');
-  for (const test of tests) {
-    try {
-      const result = await test();
-      if (result) {
-        logSuccess(result);
-      }
-    } catch (error) {
-      logError(error);
-    }
-  }
-  console.log('\n🏁 All tests finished.');
+  // 5. UI uses the schema and data to render a table (we'll just log it).
+  console.log('\n   --- Rendering Project Table ---');
+  console.log(listSchema.columns.map(c => c.label).join('\t| '));
+  listResponse.data.forEach(proj => {
+    console.log(listSchema.columns.map(c => proj[c.key]).join('\t| '));
+  });
+  console.log('   -----------------------------');
 }
 
-// Execute the test runner
-runTests();
+runDemo().catch(error => {
+  if (error.response) {
+    console.error('API Error:', error.response.status, error.response.data);
+  } else {
+    console.error('Error:', error.message);
+  }
+});

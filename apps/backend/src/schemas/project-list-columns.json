@@ -1,7 +1,0 @@
-{
-  "title": "Project List",
-  "columns": [
-    { "key": "id", "label": "Project ID" },
-    { "key": "name", "label": "Project Name" }
-  ]
-}

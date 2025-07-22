@@ -1,0 +1,48 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ListSchema Grammar",
+  "description": "The standard structure for a schema describing a data table.",
+  "type": "object",
+  "properties": {
+    "title": {
+      "type": "string",
+      "description": "The title for the list view (e.g., 'All Projects')."
+    },
+    "columns": {
+      "type": "array",
+      "description": "An ordered array of columns for the data table.",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/definitions/ListSchemaColumn"
+      }
+    }
+  },
+  "required": ["title", "columns"],
+  "definitions": {
+    "ListSchemaColumn": {
+      "type": "object",
+      "properties": {
+        "key": {
+          "type": "string",
+          "description": "The key from the data object to display in this column."
+        },
+        "label": {
+          "type": "string",
+          "description": "The human-readable header text for the column."
+        },
+        "displayAs": {
+          "type": "string",
+          "description": "A hint for the UI on how to format the data.",
+          "enum": ["text", "date", "currency", "badge"],
+          "default": "text"
+        },
+        "sortable": {
+          "type": "boolean",
+          "description": "Whether the UI should allow sorting on this column.",
+          "default": false
+        }
+      },
+      "required": ["key", "label"]
+    }
+  }
+}

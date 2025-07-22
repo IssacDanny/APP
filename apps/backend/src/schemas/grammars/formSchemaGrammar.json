@@ -1,0 +1,63 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "FormSchema Grammar",
+  "description": "The standard structure for a schema describing a data entry form.",
+  "type": "object",
+  "properties": {
+    "title": {
+      "type": "string",
+      "description": "The title for the form (e.g., 'Create New Project')."
+    },
+    "type": {
+      "description": "MUST be 'object'.",
+      "const": "object"
+    },
+    "properties": {
+      "type": "object",
+      "description": "Defines each field in the form.",
+      "patternProperties": {
+        "^.+$": {
+          "$ref": "#/definitions/FormSchemaProperty"
+        }
+      }
+    },
+    "required": {
+      "type": "array",
+      "description": "An array of property keys that are required.",
+      "items": { "type": "string" }
+    }
+  },
+  "required": ["title", "type", "properties"],
+  "definitions": {
+    "FormSchemaProperty": {
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string",
+          "description": "The label for the form field."
+        },
+        "type": {
+          "type": "string",
+          "description": "The data type of the field.",
+          "enum": ["string", "number", "boolean"]
+        },
+        "uiWidget": {
+          "type": "string",
+          "description": "A hint for which UI component to render.",
+          "enum": ["text", "textarea", "date", "select"],
+          "default": "text"
+        },
+        "enum": {
+          "type": "array",
+          "description": "If uiWidget is 'select', this provides the options.",
+          "items": { "type": "string" }
+        },
+        "description": {
+          "type": "string",
+          "description": "Help text to display below the field."
+        }
+      },
+      "required": ["title", "type"]
+    }
+  }
+}

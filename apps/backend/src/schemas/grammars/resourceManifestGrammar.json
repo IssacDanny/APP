@@ -1,0 +1,68 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Resource Manifest Grammar",
+  "description": "Defines the valid structure for an adapter's static resources manifest.",
+  "type": "object",
+  "patternProperties": {
+    "^[a-zA-Z0-9_]+$": {
+      "$ref": "#/definitions/ResourceDefinition"
+    }
+  },
+  "additionalProperties": false,
+
+  "definitions": {
+    "ResourceDefinition": {
+      "type": "object",
+      "properties": {
+        "actions": {
+          "type": "object",
+          "properties": {
+            "list": { "$ref": "#/definitions/ActionDefinition" },
+            "getById": { "$ref": "#/definitions/ActionDefinition" },
+            "create": { "$ref": "#/definitions/ActionDefinition" },
+            "update": { "$ref": "#/definitions/ActionDefinition" },
+            "delete": { "$ref": "#/definitions/ActionDefinition" }
+          },
+          "patternProperties": {
+            "^[a-zA-Z0-9_]+$": { "$ref": "#/definitions/ActionDefinition" }
+          },
+          "additionalProperties": false
+        }
+      },
+      "required": ["actions"],
+      "anyOf": [
+        {
+          "properties": { "actions": { "required": ["list"] } }
+        },
+        {
+          "properties": { "actions": { "required": ["getById"] } }
+        }
+      ],
+      "errorMessage": "A resource MUST define an 'actions' object with at least one read action ('list' or 'getById')."
+    },
+
+    "ActionDefinition": {
+      "type": "object",
+      "properties": {
+        "api": {
+          "type": "object",
+          "properties": {
+            "method": { "type": "string", "enum": ["get", "post", "patch", "delete"] },
+            "path": { "type": "string" }
+          },
+          "required": ["method", "path"]
+        },
+        "schema": {
+          "type": "object",
+          "properties": {
+            "type": { "type": "string", "enum": ["form", "view"] }
+          },
+          "required": ["type"]
+        }
+      },
+      "required": ["api", "schema"]
+    }
+  }
+}
+
+

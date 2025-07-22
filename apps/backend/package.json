@@ -11,6 +11,8 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
+    "ajv": "^8.17.1",
+    "ajv-errors": "^3.0.0",
     "axios": "^1.10.0",
     "dotenv": "^17.2.0",
     "express": "^5.1.0"
