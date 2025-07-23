@@ -1,44 +1,88 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "ListSchema Grammar",
-  "description": "The standard structure for a schema describing a data table.",
+  "title": "ViewSchema Grammar",
+  "description": "The standard structure for a schema describing how to display data, either as a table or a detail page.",
   "type": "object",
   "properties": {
+    "type": {
+      "description": "MUST be 'view' to identify this as a display schema.",
+      "const": "view"
+    },
     "title": {
       "type": "string",
-      "description": "The title for the list view (e.g., 'All Projects')."
+      "description": "The title for the view. Can use templates like 'Details for {name}'."
     },
-    "columns": {
-      "type": "array",
-      "description": "An ordered array of columns for the data table.",
-      "minItems": 1,
-      "items": {
-        "$ref": "#/definitions/ListSchemaColumn"
-      }
+    "viewType": {
+      "type": "string",
+      "description": "Determines the overall layout of the view.",
+      "enum": ["table", "detail"]
     }
   },
-  "required": ["title", "columns"],
+  "required": ["type", "title", "viewType"],
+
+  "allOf": [
+    {
+      "if": {
+        "properties": { "viewType": { "const": "table" } }
+      },
+      "then": {
+        "$ref": "#/definitions/TableViewProperties"
+      }
+    },
+    {
+      "if": {
+        "properties": { "viewType": { "const": "detail" } }
+      },
+      "then": {
+        "$ref": "#/definitions/DetailViewProperties"
+      }
+    }
+  ],
+
   "definitions": {
-    "ListSchemaColumn": {
+    "TableViewProperties": {
+      "properties": {
+        "columns": {
+          "type": "array",
+          "description": "An ordered array of columns for the data table.",
+          "minItems": 1,
+          "items": { "$ref": "#/definitions/DisplayField" }
+        }
+      },
+      "required": ["columns"]
+    },
+
+    "DetailViewProperties": {
+      "properties": {
+        "layout": {
+          "type": "array",
+          "description": "An array of sections or fields defining the page layout.",
+          "items": { "$ref": "#/definitions/DisplayField" }
+        }
+      },
+      "required": ["layout"]
+    },
+    
+    "DisplayField": {
       "type": "object",
       "properties": {
         "key": {
           "type": "string",
-          "description": "The key from the data object to display in this column."
+          "description": "The key from the data object to display."
         },
         "label": {
           "type": "string",
-          "description": "The human-readable header text for the column."
+          "description": "The human-readable label for the field or column header."
         },
         "displayAs": {
           "type": "string",
           "description": "A hint for the UI on how to format the data.",
-          "enum": ["text", "date", "currency", "badge"],
+          "enum": ["text", "date", "currency", "badge", "textarea"],
           "default": "text"
         },
         "sortable": {
           "type": "boolean",
-          "description": "Whether the UI should allow sorting on this column.",
+          "description": "For tables: whether the UI should allow sorting on this column.",
           "default": false
         }
       },

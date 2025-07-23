@@ -1,12 +1,10 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "Resource Manifest Grammar",
-  "description": "Defines the valid structure for an adapter's static resources manifest.",
+  "title": "Resource Manifest Grammar (Standardized)",
+  "description": "Defines a resource with one canonical view schema and multiple action-specific standard JSON schemas for forms.",
   "type": "object",
   "patternProperties": {
-    "^[a-zA-Z0-9_]+$": {
-      "$ref": "#/definitions/ResourceDefinition"
-    }
+    "^[a-zA-Z0-9_]+$": { "$ref": "#/definitions/ResourceDefinition" }
   },
   "additionalProperties": false,
 
@@ -14,55 +12,94 @@
     "ResourceDefinition": {
       "type": "object",
       "properties": {
+        "viewSchema": {
+          "description": "The one canonical schema for displaying this resource's data.",
+          "$ref": "#/definitions/ViewSchema"
+        },
         "actions": {
           "type": "object",
           "properties": {
-            "list": { "$ref": "#/definitions/ActionDefinition" },
-            "getById": { "$ref": "#/definitions/ActionDefinition" },
-            "create": { "$ref": "#/definitions/ActionDefinition" },
-            "update": { "$ref": "#/definitions/ActionDefinition" },
-            "delete": { "$ref": "#/definitions/ActionDefinition" }
+            "retrieve": { "$ref": "#/definitions/RetrieveAction" },
+            "retrieveByID": { "$ref": "#/definitions/FormAction" },
+            "search": { "$ref": "#/definitions/FormAction" },
+            "create": { "$ref": "#/definitions/FormAction" },
+            "update": { "$ref": "#/definitions/FormAction" },
+            "delete": { "$ref": "#/definitions/FormAction" }
           },
-          "patternProperties": {
-            "^[a-zA-Z0-9_]+$": { "$ref": "#/definitions/ActionDefinition" }
-          },
-          "additionalProperties": false
+          "additionalProperties": { "$ref": "#/definitions/FormAction" }
         }
       },
-      "required": ["actions"],
-      "anyOf": [
+      "required": ["viewSchema", "actions"],
+      "allOf": [
         {
-          "properties": { "actions": { "required": ["list"] } }
-        },
-        {
-          "properties": { "actions": { "required": ["getById"] } }
+          "properties": {
+            "actions": { "required": ["retrieve"] }
+          }
         }
-      ],
-      "errorMessage": "A resource MUST define an 'actions' object with at least one read action ('list' or 'getById')."
+      ]
     },
 
-    "ActionDefinition": {
+    "RetrieveAction": {
       "type": "object",
       "properties": {
-        "api": {
-          "type": "object",
-          "properties": {
-            "method": { "type": "string", "enum": ["get", "post", "patch", "delete"] },
-            "path": { "type": "string" }
-          },
-          "required": ["method", "path"]
-        },
-        "schema": {
-          "type": "object",
-          "properties": {
-            "type": { "type": "string", "enum": ["form", "view"] }
-          },
-          "required": ["type"]
+        "api": { "$ref": "#/definitions/ApiDefinition" },
+        "label": { "type": "string" }
+      },
+      "required": ["api", "label"],
+      "not": { "required": ["formSchema"] },
+      "description": "An action that retrieves data. It does NOT have its own form schema."
+    },
+
+    "FormAction": {
+      "type": "object",
+      "properties": {
+        "api": { "$ref": "#/definitions/ApiDefinition" },
+        "label": { "type": "string" },
+        "formSchema": { "$ref": "#/definitions/FormSchema" }
+      },
+      "required": ["api", "label", "formSchema"],
+      "description": "An action that captures data from the user and requires a form."
+    },
+
+    "ApiDefinition": {
+      "type": "object",
+      "properties": {
+        "method": { "type": "string", "enum": ["get", "post", "put", "patch", "delete"] },
+        "path": { "type": "string" }
+      },
+      "required": ["method", "path"]
+    },
+
+    "ViewSchema": {
+      "type": "object",
+      "properties": {
+        "type": { "const": "view" },
+        "title": { "type": "string" },
+        "viewType": { "enum": ["table", "detail"] },
+        "columns": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "key": { "type": "string" },
+              "label": { "type": "string" }
+            },
+            "required": ["key", "label"]
+          }
         }
       },
-      "required": ["api", "schema"]
+      "required": ["type", "viewType", "title"]
+    },
+
+    "FormSchema": {
+      "description": "A standard JSON Schema object used to define a form.",
+      "type": "object",
+      "properties": {
+        "type": { "const": "object" },
+        "properties": { "type": "object" },
+        "title": { "type": "string" }
+      },
+      "required": ["type", "properties", "title"]
     }
   }
 }
-
-
