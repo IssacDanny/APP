@@ -56,11 +56,28 @@
       "properties": {
         "layout": {
           "type": "array",
-          "description": "An array of sections or fields defining the page layout.",
-          "items": { "$ref": "#/definitions/DisplayField" }
+          "items": {
+            "oneOf": [
+              { "$ref": "#/definitions/DisplayField" },
+              { "$ref": "#/definitions/LayoutSection" }
+            ]
+          }
         }
       },
       "required": ["layout"]
+    },
+
+    "LayoutSection": {
+      "type": "object",
+      "properties": {
+        "type": { "const": "section" },
+        "title": { "type": "string" },
+        "items": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/DisplayField" }
+        }
+      },
+      "required": ["type", "title", "items"]
     },
     
     "DisplayField": {
