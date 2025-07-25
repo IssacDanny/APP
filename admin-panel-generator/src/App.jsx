@@ -4,9 +4,13 @@ import React, { useState, useMemo, useCallback } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 
 // Our Compiler
+import { linkSchemas } from './compiler/linker';
 import { parseAdminPanelSchema } from './compiler/parser';
 import { UIGeneratorVisitor } from './compiler/visitor';
-import sampleSchema from './schemas/sampleSchema.json';
+
+// Import the individual service schemas
+import contentServiceSchema from './schemas/contentServiceSchema.json';
+import userServiceSchema from './schemas/userServiceSchema.json';
 
 // Our Runtime
 import { AppRuntimeContext } from './context/AppRuntimeContext';
@@ -44,7 +48,14 @@ function App() {
   // useMemo ensures the entire compilation process runs only once.
   const uiIR = useMemo(() => {
     try {
-      const schemaString = JSON.stringify(sampleSchema);
+      // 1. COLLECT: Simulate fetching schemas from different services.
+      const collectedSchemas = [contentServiceSchema, userServiceSchema];
+
+      // 2. LINK: Use the linker to create the single grand schema.
+      const grandSchema = linkSchemas(collectedSchemas);
+      
+      // 3. PARSE & VISIT: The rest of the pipeline proceeds as before.
+      const schemaString = JSON.stringify(grandSchema);
       const astRoot = parseAdminPanelSchema(schemaString);
       const visitor = new UIGeneratorVisitor();
       return astRoot.accept(visitor);

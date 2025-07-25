@@ -1,7 +1,5 @@
-// src/runtime/ComponentLibrary.jsx
-
 import React, { useState, useEffect } from 'react';
-import { NavLink as RouterNavLink, Outlet } from 'react-router-dom';
+import { NavLink as RouterNavLink, Outlet, useNavigate } from 'react-router-dom';
 import Form from '@rjsf/core';
 import validator from '@rjsf/validator-ajv8';
 import jsonata from 'jsonata';
@@ -11,19 +9,20 @@ import RenderEngine from './RenderEngine.jsx'; // For rendering nested IR (e.g.,
 
 // --- Layout & Navigation Components ---
 
-export const AppShell = ({ title, navigation }) => (
+export const AppShell = ({ title, navigation }) => ( // Remove 'children' prop, it's now handled by Outlet
   <div className="app-shell">
     <aside className="sidebar">
       <h1>{title}</h1>
       <nav>
-        {/* This part is fine. It renders the navigation IR. */}
+        {/* The RenderEngine correctly renders the NavLink components here */}
         {navigation.map((navSpec, i) => <RenderEngine key={i} spec={navSpec} />)}
       </nav>
     </aside>
     <main className="content-area">
       {/* 
-        This is the crucial change. 
-        The <Outlet/> component from React Router will render whatever child route is active.
+        THIS IS THE FIX:
+        The <Outlet /> component tells React Router where to render the
+        element of the matched child route (e.g., the ResourcePageLayout).
       */}
       <Outlet />
     </main>
@@ -49,16 +48,26 @@ export const NavLink = ({ text, to }) => (
 );
 
 export const MenuLink = ({ text, actionConfig }) => {
-  const handleClick = () => {
-    // For now, we'll just log the action.
-    // A full implementation would use the runtime context to navigate.
-    console.log("Navigate action triggered:", actionConfig);
-    alert(`Navigate to ${actionConfig.resource}'s ${actionConfig.view || 'detail view'}`);
+  const navigate = useNavigate();
+
+  const handleClick = (e) => {
+    e.preventDefault(); // Prevent default link behavior if wrapped in <a>
+    
+    // For now, we only handle navigation to resource list views.
+    // A full implementation would handle detail views and special IDs.
+    if (actionConfig.type === 'navigate' && actionConfig.resource) {
+      const path = `/resources/${actionConfig.resource}`;
+      console.log("Navigating to:", path);
+      navigate(path);
+    } else {
+      console.warn("Unsupported MenuLink action:", actionConfig);
+    }
   };
 
+  // We'll render it as a button-like link inside a list item for styling
   return (
     <li>
-      <a href="#" onClick={handleClick} style={{cursor: 'pointer'}}>{text}</a>
+      <a href="#" onClick={handleClick}>{text}</a>
     </li>
   );
 };

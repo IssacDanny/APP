@@ -1,0 +1,23 @@
+{
+  "type": "userMenu",
+  "id": "user",
+  "title": "USER",
+  "items": [
+    {
+      "type": "navigationLink",
+      "id": "profile",
+      "name": "My Profile",
+      "targetResource": "users",
+      "targetView": "detailView",
+      "targetId": "@currentUser"
+    },
+    {
+      "type": "simpleAction",
+      "id": "logout",
+      "name": "Logout",
+      "target": "none",
+      "method": "POST",
+      "endpoint": "/api/auth/logout"
+    }
+  ]
+}
