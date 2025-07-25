@@ -1,5 +1,3 @@
-// src/compiler/linker.js
-
 /**
  * Defines the static "frame" or "shell" of the admin panel.
  * The `navigation` array is an empty slot that the linker will fill.

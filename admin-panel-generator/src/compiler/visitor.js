@@ -2,11 +2,17 @@ import { VisitorBase } from './VisitorBase.js';
 
 /**
  * The UIGeneratorVisitor traverses the AST and produces a declarative
- * Intermediate Representation (IR) of the UI. This IR is a simple object
- * structure that can be consumed by a renderer.
+ * Intermediate Representation (IR) of the UI.
  */
 export class UIGeneratorVisitor extends VisitorBase {
+  // =================================================================
+  // --- Structural Node Visitors ---
+  // These methods handle the overall layout and navigation structure.
+  // =================================================================
 
+  /**
+   * @param {import('./ast').AdminPanelNode} node
+   */
   visitAdminPanelNode(node) {
     const navItemsIR = node.navigation.map(navNode => navNode.accept(this));
     return {
@@ -14,37 +20,44 @@ export class UIGeneratorVisitor extends VisitorBase {
       props: {
         title: node.panelName,
         navigation: navItemsIR,
-        routes: this.collectRoutes(node),
+        routes: this._collectRoutes(node),
       }
     };
   }
 
+  /**
+   * @param {import('./ast').ResourceGroupNode} node
+   */
   visitResourceGroupNode(node) {
     const childrenIR = node.items.map(itemNode => itemNode.accept(this));
-    // --- THIS LOGIC IS NEW/IMPROVED ---
-    // Handle icons and choose between NavSection and NavFolder
     const componentType = node.display === 'section' ? 'NavSection' : 'NavFolder';
     return {
       component: componentType,
       props: {
         title: node.title,
-        icon: node.icon, // Pass icon to IR
+        icon: node.icon,
         children: childrenIR,
       }
     };
   }
   
+  /**
+   * @param {import('./ast').ResourceNode} node
+   */
   visitResourceNode(node) {
     return {
       component: 'NavLink',
       props: {
         text: node.name,
         to: `/resources/${node.id}`,
-        icon: node.icon, // Pass icon to IR
+        icon: node.icon,
       }
     };
   }
   
+  /**
+   * @param {import('./ast').UserMenuNode} node
+   */
   visitUserMenuNode(node) {
     const menuItemsIR = node.items.map(itemNode => itemNode.accept(this));
     return {
@@ -55,29 +68,15 @@ export class UIGeneratorVisitor extends VisitorBase {
       }
     };
   }
+  
+  // =================================================================
+  // --- View Node Visitors ---
+  // These methods handle the content of pages (tables, detail views).
+  // =================================================================
 
-  // --- NEW HELPER METHOD ---
   /**
-   * Generates the IR for a resource's detail page content.
-   * @param {import('./astNodes').ResourceNode} node
-   * @returns {object} The IR for the resource's detail page.
+   * @param {import('./ast').TableViewNode} node
    */
-  generateDetailPageIR(node) {
-    if (!node.views.detailView) {
-      // Graceful fallback if a detail view isn't configured
-      return { component: 'div', props: { children: 'No detail view configured for this resource.' } };
-    }
-    
-    // Visit the detailView node to get its base IR
-    const detailViewIR = node.views.detailView.accept(this);
-    
-    // Inject necessary contextual props for the component to fetch its data
-    detailViewIR.props.resourceEndpoint = node.endpoint;
-    detailViewIR.props.resourceName = node.name;
-
-    return detailViewIR;
-  }
-
   visitTableViewNode(node) {
     return {
       component: 'DataTable',
@@ -88,108 +87,117 @@ export class UIGeneratorVisitor extends VisitorBase {
   }
   
   /**
-   * Visits a detail view definition.
-   * @param {import('./astNodes').DetailViewNode} node
-   * @returns {object} The IR for a detail display component.
+   * @param {import('./ast').DetailViewNode} node
    */
   visitDetailViewNode(node) {
     return {
-      component: 'DetailView', // This will map to our new <DetailView> React component
+      component: 'DetailView',
       props: {
         fields: node.fields,
       }
     };
   }
 
-  visitFormActionNode(node) { /* ... (no changes) ... */
+  // =================================================================
+  // --- Action Node Visitors ---
+  // These methods handle interactive elements like buttons and links.
+  // =================================================================
+
+  /**
+   * @param {import('./ast').FormActionNode} node
+   */
+  visitFormActionNode(node) {
     return {
       component: 'FormButton',
       props: {
         text: node.name,
         target: node.target,
-        actionConfig: { type: 'form', endpoint: node.endpoint, method: node.method, formSchema: node.formSchema, payloadTransform: node.payloadTransform, dataMapTransform: node.dataMapTransform }
-      }
-    };
-  }
-
-  visitSimpleApiActionNode(node) { /* ... (no changes) ... */
-    return {
-      component: 'ActionButton',
-      props: {
-        text: node.name,
-        target: node.target,
-        actionConfig: { type: 'simple', endpoint: node.endpoint, method: node.method, confirmationText: node.confirmationText }
-      }
-    };
-  }
-  
-  visitNavigationLinkActionNode(node) {
-    return {
-      component: 'MenuLink',
-      props: {
-        text: node.name,
-        actionConfig: {
-          type: 'navigate',
-          // Use the full key names to match the runtime context
-          targetResource: node.targetResource,
-          targetView: node.targetView,
-          targetId: node.targetId
-        }
+        // CLEANUP: Pass the entire node. The runtime component now has all the info it needs.
+        actionConfig: node
       }
     };
   }
 
   /**
-   * Recursively walks the AST and collects all possible routes for list AND detail pages.
-   * @param {import('./astNodes').AdminPanelNode} rootNode
-   * @returns {Array<object>} A list of route definitions for React Router.
+   * @param {import('./ast').SimpleApiActionNode} node
    */
-  collectRoutes(rootNode) {
+  visitSimpleApiActionNode(node) {
+    return {
+      component: 'ActionButton',
+      props: {
+        text: node.name,
+        target: node.target,
+        actionConfig: node
+      }
+    };
+  }
+  
+  /**
+   * @param {import('./ast').NavigationLinkActionNode} node
+   */
+  visitNavigationLinkActionNode(node) {
+    return {
+      component: 'MenuLink',
+      props: {
+        text: node.name,
+        actionConfig: node
+      }
+    };
+  }
+
+  // =================================================================
+  // --- Private Helper Methods ---
+  // Underscore convention indicates these are internal to the visitor.
+  // =================================================================
+
+  /**
+   * Recursively walks the AST to generate all routes for React Router.
+   * @param {import('./ast').AdminPanelNode} rootNode
+   * @returns {Array<object>}
+   */
+  _collectRoutes(rootNode) {
     const routes = [];
-    
     const findResources = (items) => {
       if (!items) return;
-      
       for (const item of items) {
         if (item.constructor.name === 'ResourceNode') {
-          // 1. Create the route for the LIST view (e.g., /resources/products)
+          // List view route
           routes.push({
             path: `/resources/${item.id}`,
-            element: this.generatePageIRForResource(item)
+            element: this._buildListPage(item)
           });
-
-          // 2. IF a detailView exists, create a DYNAMIC route for it
-          //    (e.g., /resources/users/:itemId)
+          // Detail view route (if it exists)
           if (item.views.detailView) {
             routes.push({
-              path: `/resources/${item.id}/:itemId`, // The ':itemId' is a URL parameter
-              element: this.generateDetailPageIR(item),
+              path: `/resources/${item.id}/:itemId`,
+              element: this._buildDetailPage(item),
             });
           }
-
         } else if (item.constructor.name === 'ResourceGroupNode') {
-          // Recurse into sub-folders
           findResources(item.items);
         }
       }
     };
-
     findResources(rootNode.navigation);
     return routes;
   }
 
-  generatePageIRForResource(resourceNode) { /* ... (no changes) ... */
+  /**
+   * Builds the complete IR for a resource's list page.
+   * @param {import('./ast').ResourceNode} resourceNode
+   * @returns {object}
+   */
+  _buildListPage(resourceNode) {
     const listViewIR = resourceNode.views.listView.accept(this);
-    const globalActions = resourceNode.actions
+    const globalActions = (resourceNode.actions || [])
       .filter(action => action.target === 'global')
       .map(action => action.accept(this));
-    
-    const itemActions = resourceNode.actions
+    const itemActions = (resourceNode.actions || [])
       .filter(action => action.target === 'item')
       .map(action => action.accept(this));
 
+    // Inject necessary props into the generated IR
     listViewIR.props.itemActions = itemActions;
-    listViewIR.props.resourceId = resourceNode.id;
     listViewIR.props.resourceEndpoint = resourceNode.endpoint;
 
     return {
@@ -200,5 +208,17 @@ export class UIGeneratorVisitor extends VisitorBase {
         listView: listViewIR,
       }
     };
+  }
+
+  /**
+   * Builds the complete IR for a resource's detail page.
+   * @param {import('./ast').ResourceNode} resourceNode
+   * @returns {object}
+   */
+  _buildDetailPage(resourceNode) {
+    const detailViewIR = resourceNode.views.detailView.accept(this);
+    detailViewIR.props.resourceEndpoint = resourceNode.endpoint;
+    detailViewIR.props.resourceName = resourceNode.name;
+    return detailViewIR;
   }
 }

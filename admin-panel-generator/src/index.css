@@ -1,11 +1,11 @@
 /* ==========================================================================
-   Base & Variables - BEAUTIFUL THEME
+   1. BASE & DEFAULTS
    ========================================================================== */
 
-/* 1. Import a professional font like 'Inter' */
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
 :root {
+  /* Colors */
   --color-primary: #3c82f6;
   --color-primary-dark: #2563eb;
   --color-text-header: #111827;
@@ -16,10 +16,17 @@
   --color-surface: #ffffff;
   --color-border: #e5e7eb;
   --color-hover-light: #eff6ff;
-  --font-sans: 'Inter', -apple-system, sans-serif;
+
+  /* Typography */
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+
+  /* Sizing & Spacing */
   --sidebar-width: 250px;
+  --border-radius-sm: 4px;
   --border-radius-md: 8px;
   --card-padding: 1.5rem;
+
+  /* Effects */
   --box-shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
   --box-shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
   --transition-fast: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
@@ -35,8 +42,9 @@ body {
 }
 
 /* ==========================================================================
-   App Shell & Layout
+   2. LAYOUT & SHELL
    ========================================================================== */
+
 .app-shell {
   display: flex;
   height: 100vh;
@@ -50,24 +58,15 @@ body {
   background-color: var(--color-surface);
 }
 
-.app-sidebar-header {
-  font-size: 1.5rem;
-  font-weight: 700;
-  margin: 0 0 1.5rem 0.5rem;
-  color: var(--color-text-header);
-}
-
 .app-main-content {
   flex: 1;
   padding: 2rem;
   overflow-y: auto;
-  /* THIS IS THE FOUNDATION FOR 3D EFFECTS WITHIN THE MAIN AREA */
-  perspective: 1500px; 
+  perspective: 1500px;
+  position: relative; /* For aurora */
+  z-index: 1;
 }
 
-/* ==========================================================================
-   Resource Page
-   ========================================================================== */
 .resource-page-header {
   display: flex;
   justify-content: space-between;
@@ -80,20 +79,18 @@ body {
   font-size: 2rem;
   font-weight: 700;
   color: var(--color-text-header);
-  letter-spacing: -0.025em; /* Tighter letter spacing for headers */
+  letter-spacing: -0.025em;
 }
 
-.resource-page-divider { display: none; }
-
-
 /* ==========================================================================
-   Navigation
+   3. NAVIGATION COMPONENTS
    ========================================================================== */
+
 .nav-section {
   margin-top: 1.5rem;
 }
 
-.nav-section-title {
+.nav-section-title, .user-menu-title {
   font-size: 0.75rem;
   font-weight: 600;
   text-transform: uppercase;
@@ -102,41 +99,52 @@ body {
   letter-spacing: 0.05em;
 }
 
-.nav-link,
-.nav-folder-toggle {
+.nav-link, .nav-folder-toggle {
   display: flex;
   align-items: center;
-  gap: 0.75rem; /* Increased gap for icon */
+  gap: 0.75rem;
   padding: 0.75rem;
   text-decoration: none;
   border-radius: var(--border-radius-md);
   color: var(--color-text-body);
   font-weight: 500;
   cursor: pointer;
-  /* 2. Add a smooth transition */
   transition: var(--transition-fast);
+  position: relative;
 }
 
-.nav-link:hover,
-.nav-folder-toggle:hover {
+.nav-link:hover, .nav-folder-toggle:hover {
   background-color: var(--color-hover-light);
   color: var(--color-primary-dark);
 }
 
 .nav-link.active {
-  background-color: var(--color-primary);
   color: var(--color-text-on-primary);
   font-weight: 600;
-  box-shadow: var(--box-shadow-md);
-}
-.nav-link.active:hover {
-  background-color: var(--color-primary-dark);
 }
 
-.nav-folder-icon { width: 1em; text-align: center; }
+.active-nav-indicator {
+  position: absolute;
+  inset: 0;
+  background-color: var(--color-primary);
+  border-radius: var(--border-radius-md);
+  z-index: -1;
+  box-shadow: var(--box-shadow-md);
+}
+
+.nav-item-text {
+  position: relative;
+  z-index: 1;
+}
+.nav-link svg, .nav-folder-toggle svg {
+  position: relative;
+  z-index: 1;
+}
+
+.nav-folder-arrow { margin-left: auto; }
 .nav-folder-items {
   padding-left: 1.25rem;
-  overflow: hidden; /* Add this to hide content as the height animates */
+  overflow: hidden;
 }
 
 .user-menu {
@@ -145,9 +153,23 @@ body {
   border-top: 1px solid var(--color-border);
 }
 
+.menu-link {
+  display: block;
+  padding: 0.75rem;
+  color: var(--color-primary);
+  text-decoration: none;
+  border-radius: var(--border-radius-md);
+  font-weight: 500;
+}
+.menu-link:hover {
+  background-color: var(--color-hover-light);
+  text-decoration: none;
+}
+
 /* ==========================================================================
-   Buttons
+   4. INTERACTIVE COMPONENTS (Buttons, Forms, etc.)
    ========================================================================== */
+
 .btn {
   padding: 10px 18px;
   border: 1px solid var(--color-border);
@@ -157,23 +179,12 @@ body {
   font-size: 0.9rem;
   font-weight: 600;
   box-shadow: var(--box-shadow-sm);
-  /* 
-    THIS IS CRUCIAL: It ensures the button animates smoothly
-    when you MOUSE OUT. Framer Motion handles mouse-in. 
-  */
   transition: background-color 0.2s ease, border-color 0.2s ease;
-  /* Performance hint for the browser */
   will-change: transform;
 }
-
 .btn:hover {
-  /* For non-primary buttons, give a subtle background change */
   background-color: #f9fafb;
   border-color: #d1d5db;
-}
-
-.btn:active {
-  transform: translateY(-1px);
 }
 
 .btn-primary {
@@ -186,9 +197,32 @@ body {
   border-color: var(--color-primary-dark);
 }
 
+.form-group { margin-bottom: 1.25rem; }
+.form-group label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: 500;
+  font-size: 0.9rem;
+}
+.required-asterisk { color: #ef4444; margin-left: 0.25rem; }
+.form-group input, .form-group select, .form-group textarea {
+  display: block;
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--border-radius-md);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.form-group input:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(60, 130, 246, 0.3);
+}
+
 /* ==========================================================================
-   THE FIX: Data List (replaces Data Table)
+   5. DATA DISPLAY COMPONENTS (Tables, Cards, etc.)
    ========================================================================== */
+
 .data-list {
   background-color: var(--color-surface);
   border-radius: var(--border-radius-md);
@@ -196,14 +230,12 @@ body {
   border: 1px solid var(--color-border);
   padding: var(--card-padding);
 }
-
 .data-list-header, .data-list-row {
   display: grid;
   align-items: center;
   gap: 1.5rem;
   padding: 0 1rem;
 }
-
 .data-list-header {
   padding-bottom: 1rem;
   margin-bottom: 1rem;
@@ -212,131 +244,20 @@ body {
   font-size: 0.75rem;
   text-transform: uppercase;
   color: var(--color-text-muted);
-  letter-spacing: 0.05em;
 }
-
-.data-list-body {
-  /* This is the container for the animated rows */
-}
-
 .data-list-row {
   padding: 1rem;
   border-radius: var(--border-radius-md);
   transition: var(--transition-fast);
   transform-style: preserve-3d;
 }
-
 .data-list-row:hover {
   background-color: var(--color-hover-light);
-  transform: scale(1.02); /* Add a nice lift effect on hover */
+  transform: scale(1.02);
 }
+.data-list-cell { display: flex; align-items: center; }
+.data-list-actions { display: flex; gap: 0.5rem; justify-content: flex-end; }
 
-.data-list-cell {
-  display: flex;
-  align-items: center;
-}
-
-.data-list-actions {
-  display: flex;
-  gap: 0.5rem;
-  justify-content: flex-end;
-}
-
-
-/* ==========================================================================
-   Status Pills (If you use them for orders, etc.)
-   ========================================================================== */
-.status-pill {
-    padding: 0.5rem 1rem;
-    border-radius: 4px;
-    font-size: 0.8rem;
-    font-weight: 600;
-}
-.status-pending { background: #feefc3; color: #ffb400; }
-.status-shipped, .status-delivered, .status-paid { background: #dcedc8; color: #4caf50; }
-.status-declined, .status-refunded { background: #ffcdd2; color: #f44336; }
-.status-processing { background: #d1c4e9; color: #673ab7; }
-
-/* ==========================================================================
-   Modal & RJSF Form
-   ========================================================================== */
-.modal-backdrop {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: rgba(17, 24, 39, 0.6);
-  backdrop-filter: blur(4px);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: 1000;
-}
-
-.modal-content {
-  background: var(--color-surface);
-  padding: 2rem;
-  border-radius: var(--border-radius-md);
-  min-width: 500px;
-  max-width: 90vw;
-  box-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.25); /* Softer, larger shadow for modals */
-}
-
-.modal-header {
-  margin-top: 0;
-  margin-bottom: 1.5rem;
-  font-size: 1.25rem;
-  font-weight: 600;
-  color: var(--color-text-header);
-}
-
-.modal-actions {
-  margin-top: 1.5rem;
-  display: flex;
-  gap: 0.75rem;
-  justify-content: flex-end;
-}
-
-.form-group {
-  margin-bottom: 1.25rem;
-}
-
-/* Style for the label (the title) */
-.form-group label {
-  display: block;
-  margin-bottom: 0.5rem;
-  font-weight: 500;
-  font-size: 0.9rem;
-  color: var(--color-text-header);
-}
-
-/* Style for the red asterisk on required fields */
-.required-asterisk {
-  color: #ef4444; /* A nice red */
-  margin-left: 0.25rem;
-}
-
-/* Style for the input fields themselves */
-.form-group input, .form-group select, .form-group textarea {
-  display: block;
-  width: 100%;
-  padding: 10px 12px;
-  font-size: 1rem;
-  border: 1px solid var(--color-border);
-  border-radius: var(--border-radius-md);
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
-}
-
-.form-group input:focus {
-  outline: none;
-  border-color: var(--color-primary);
-  box-shadow: 0 0 0 3px rgba(60, 130, 246, 0.3);
-}
-
-/* ==========================================================================
-   Detail View
-   ========================================================================== */
 .detail-view-card {
   background: var(--color-surface);
   border-radius: var(--border-radius-md);
@@ -344,18 +265,11 @@ body {
   box-shadow: var(--box-shadow-md);
   border: 1px solid var(--color-border);
   display: grid;
-  grid-template-columns: 1fr; /* Default to a single column */
+  grid-template-columns: 1fr;
   gap: 1.5rem;
   transform-style: preserve-3d;
 }
-
-/* On larger screens, use two columns */
-@media (min-width: 768px) {
-  .detail-view-card {
-    grid-template-columns: 1fr 1fr;
-  }
-}
-
+@media (min-width: 768px) { .detail-view-card { grid-template-columns: 1fr 1fr; } }
 .detail-field {
   background-color: #f9fafb;
   padding: 1rem;
@@ -365,17 +279,108 @@ body {
   flex-direction: column;
   gap: 0.25rem;
 }
-
 .detail-field-label {
   font-size: 0.8rem;
   font-weight: 600;
   color: var(--color-text-muted);
   text-transform: uppercase;
-  letter-spacing: 0.05em;
 }
+.detail-field-value { font-size: 1.1rem; font-weight: 500; }
 
-.detail-field-value {
-  font-size: 1.1rem;
-  color: var(--color-text-header);
-  font-weight: 500;
+.status-pill { padding: 0.5rem 1rem; border-radius: var(--border-radius-sm); font-size: 0.8rem; font-weight: 600; }
+.status-pending { background: #feefc3; color: #ffb400; }
+.status-shipped { background: #dcedc8; color: #4caf50; }
+.status-declined { background: #ffcdd2; color: #f44336; }
+.status-processing { background: #d1c4e9; color: #673ab7; }
+
+/* ==========================================================================
+   6. MODAL
+   ========================================================================== */
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(17, 24, 39, 0.6);
+  backdrop-filter: blur(4px);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+.modal-content {
+  background: var(--color-surface);
+  padding: 2rem;
+  border-radius: var(--border-radius-md);
+  min-width: 500px;
+  max-width: 90vw;
+  box-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.25);
+}
+.modal-header { margin: 0 0 1.5rem 0; font-size: 1.25rem; font-weight: 600; }
+.modal-actions { margin-top: 1.5rem; display: flex; gap: 0.75rem; justify-content: flex-end; }
+
+/* ==========================================================================
+   7. UTILITIES & SPECIAL EFFECTS
+   ========================================================================== */
+
+.render-engine-error {
+  margin: 0.5rem;
+  padding: 0.75rem 1rem;
+  border-radius: var(--border-radius-md);
+  background-color: #fff1f2;
+  border: 1px solid #ffb8bf;
+  color: #c51d34;
+}
+.render-engine-error strong { font-weight: 600; }
+.render-engine-error code { background-color: #fee2e5; padding: 0.1rem 0.3rem; border-radius: var(--border-radius-sm); font-family: monospace; }
+
+/* Aurora Background Effect */
+.app-main-content::before, .app-main-content::after {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  width: 50vw;
+  height: 50vw;
+  border-radius: 50%;
+  filter: blur(120px);
+  opacity: 0.1;
+  pointer-events: none;
+}
+.app-main-content::before {
+  background-color: #61dafb;
+  top: -25vw;
+  left: -25vw;
+  animation: move-aurora-1 25s infinite alternate linear;
+}
+.app-main-content::after {
+  background-color: #a78bfa;
+  bottom: -25vw;
+  right: -25vw;
+  animation: move-aurora-2 25s infinite alternate linear;
+}
+@keyframes move-aurora-1 { from { transform: translate(0, 0) rotate(0deg); } to { transform: translate(100px, 100px) rotate(360deg); } }
+@keyframes move-aurora-2 { from { transform: translate(0, 0) rotate(0deg); } to { transform: translate(-100px, -100px) rotate(360deg); } }
+
+/* ==========================================================================
+   8. APP STATUS COMPONENTS
+   ========================================================================== */
+.app-loader, .app-error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  padding: 2rem;
+  text-align: center;
+}
+.app-error {
+  background-color: #fff1f2;
+  color: #c51d34;
+}
+.app-error pre {
+  background-color: #fee2e5;
+  padding: 1rem;
+  border-radius: var(--border-radius-md);
+  text-align: left;
+  max-width: 800px;
+  overflow-x: auto;
 }

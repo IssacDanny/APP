@@ -1,72 +1,89 @@
 import Ajv from "ajv";
 import addFormats from "ajv-formats";
 
-// Import the root of our AST and the factory which it uses internally.
-import { AdminPanelNode } from './astNodes.js'; 
-
-// Import the grammar (the meta-schema) we will validate against.
+// 1. Update the import to use the clean 'ast' module path.
+import { AdminPanelNode } from './ast'; 
 import adminPanelMetaSchema from '../schemas/adminPanelMetaSchema.json';
 
-// --- AJV Setup ---
-// Initialize and configure AJV once for the module. This is more efficient
-// than creating a new instance for every parse operation.
-const ajv = new Ajv({ allErrors: true });
-addFormats(ajv, ['uri-relative']); // For formats like 'uri-relative'
+// 2. Import our new custom error.
+import { ParserError } from './utils/errors.js';
 
-// Compile the schema into a validation function. This is a significant
-// performance optimization, as AJV doesn't have to re-process the schema every time.
+// --- AJV Setup ---
+const ajv = new Ajv({ allErrors: true });
+addFormats(ajv, ['uri']); // Using 'uri' is generally more robust
+
 const validate = ajv.compile(adminPanelMetaSchema);
 
 
 /**
- * The main parser function for the Admin Panel generator.
- * It orchestrates the entire "compilation" pipeline:
- * 1. Parses the raw JSON string into a JavaScript object.
- * 2. Validates the object against the official admin panel meta-schema.
- * 3. Constructs a rich Abstract Syntax Tree (AST) from the validated object.
- *
- * @param {string} jsonString The raw JSON schema string received from the backend.
+ * Orchestrates the parsing and validation of the admin panel schema.
+ * @param {string} jsonString The raw JSON schema string.
  * @returns {AdminPanelNode} The root node of the constructed AST.
- * @throws {Error} Throws an error if the JSON is malformed, if schema validation fails,
- *                 or if AST construction fails.
+ * @throws {ParserError} Throws a custom error for specific parsing and validation failures.
  */
 export function parseAdminPanelSchema(jsonString) {
-  let parsedJson;
+  // --- Step 1: Parse ---
+  const parsedJson = parseJson(jsonString);
 
-  // --- Step 1: Parse the raw JSON string ---
+  // --- Step 2: Validate ---
+  validateSchema(parsedJson);
+  
+  // --- Step 3: Construct AST ---
+  return constructAst(parsedJson);
+}
+
+
+// --- Helper Functions for Clarity ---
+
+/**
+ * Parses a JSON string into a JavaScript object.
+ * @param {string} jsonString
+ * @returns {object} The parsed object.
+ * @throws {ParserError} If the string is not valid JSON.
+ */
+function parseJson(jsonString) {
   try {
-    parsedJson = JSON.parse(jsonString);
+    return JSON.parse(jsonString);
   } catch (e) {
-    // This catches errors like unclosed brackets, etc.
     console.error("Fatal: Input string is not valid JSON.", e);
-    throw new Error(`Invalid JSON format: ${e.message}`);
+    // 3. Use the custom error class.
+    throw new ParserError(`Invalid JSON format: ${e.message}`);
   }
+}
 
-  // --- Step 2: Validate against the meta-schema (the "grammar") ---
-  const isValid = validate(parsedJson);
+/**
+ * Validates the parsed JSON object against the meta-schema.
+ * @param {object} data The parsed JSON data.
+ * @throws {ParserError} If schema validation fails.
+ */
+function validateSchema(data) {
+  const isValid = validate(data);
   if (!isValid) {
-    // Format the errors from AJV to be more readable.
-    const errorDetails = validate.errors
+    const errorDetails = (validate.errors || [])
       .map(err => `  - Path: ${err.instancePath || '/'} | Message: ${err.message}`)
       .join('\n');
       
-    console.error("Fatal: Schema validation failed. The provided schema does not conform to the grammar.", validate.errors);
-    throw new Error(`Schema validation failed. Details:\n${errorDetails}`);
+    console.error("Fatal: Schema validation failed.", validate.errors);
+    // 4. Use the custom error, passing the AJV errors as details.
+    throw new ParserError(`Schema validation failed. Details:\n${errorDetails}`, validate.errors);
   }
-
   console.log("Schema validation successful.");
+}
 
-  // --- Step 3: Construct the AST ---
-  // If validation passed, we can proceed with confidence that the structure is correct
-  // and our AST node constructors will not fail on missing properties.
+/**
+ * Constructs the Abstract Syntax Tree from the validated data.
+ * @param {object} data The validated JSON data.
+ * @returns {AdminPanelNode} The root of the AST.
+ * @throws {ParserError} If AST construction fails unexpectedly.
+ */
+function constructAst(data) {
   try {
-    const astRoot = new AdminPanelNode(parsedJson);
+    const astRoot = new AdminPanelNode(data);
     console.log("AST construction successful.");
     return astRoot;
   } catch(e) {
-    // This is a safety net. If an error occurs here, it likely indicates a mismatch
-    // between the meta-schema and the AST node constructor logic.
     console.error("Fatal: Failed to construct AST even after validation passed.", e);
-    throw new Error(`Failed to construct AST: ${e.message}`);
+    // 5. Use the custom error here as well.
+    throw new ParserError(`Failed to construct AST: ${e.message}`);
   }
 }

@@ -1,35 +1,35 @@
-// src/runtime/effectLibrary.js
-
 /**
- * A library of reusable animation presets for Framer Motion.
+ * A centralized library of reusable animation presets for Framer Motion.
+ * This architecture decouples animation logic from component logic, making
+ * effects easy to maintain, reuse, and customize.
  */
 export const effectLibrary = {
-  // --- Page/Container Effects ---
-  fadeInUp: {
-    initial: { opacity: 0, y: 30 }, // Start a bit lower
-    animate: { opacity: 1, y: 0 },
-    exit: { opacity: 0, y: -30 },  // Exit by sliding up and fading out
-    transition: { 
-      duration: 0.5, // A slightly longer, more graceful duration
-      ease: [0.4, 0, 0.2, 1], // A custom cubic bezier for a premium feel
-    },
-  },
-  
-  // A fade-in-and-slide-up effect
+  // =================================================================
+  // --- Page & Container Load Effects ---
+  // Effects for entire pages or large containers entering the view.
+  // =================================================================
+
+  /**
+   * A graceful fade-in and slide-up effect for pages or large components.
+   */
   fadeInUp: {
     initial: { opacity: 0, y: 20 },
     animate: { opacity: 1, y: 0 },
+    exit: { opacity: 0, y: -20 },
     transition: { duration: 0.4, ease: 'easeInOut' },
   },
 
-  // Our "mind-blowing" cascade effect for lists
+  /**
+   * A container effect that staggers the animation of its children.
+   * Used for lists, tables, and form fields.
+   */
   cascadeIn: {
     variants: {
       hidden: { opacity: 0 },
       visible: {
         opacity: 1,
         transition: {
-          staggerChildren: 0.07, // The magic delay
+          staggerChildren: 0.07,
         },
       },
     },
@@ -37,16 +37,38 @@ export const effectLibrary = {
     animate: 'visible',
   },
 
-  // --- NEW: Modal Effects ---
-  modalBackdrop: {
+  /**
+   * The animation for an individual item within a `cascadeIn` container.
+   */
+  cascadeItem: {
     variants: {
-      hidden: { opacity: 0 },
-      visible: { opacity: 1 },
+      hidden: { opacity: 0, y: 20 },
+      visible: {
+        opacity: 1,
+        y: 0,
+        transition: { type: 'spring', stiffness: 100 },
+      },
     },
+  },
+
+  // =================================================================
+  // --- Component-Specific Effects ---
+  // Tailored effects for specific UI components like modals and dropdowns.
+  // =================================================================
+
+  /**
+   * Fades in the modal backdrop overlay.
+   */
+  modalBackdrop: {
+    variants: { hidden: { opacity: 0 }, visible: { opacity: 1 } },
     initial: 'hidden',
     animate: 'visible',
     exit: 'hidden',
   },
+
+  /**
+   * A springy scale-in animation for the modal content itself.
+   */
   modalContent: {
     variants: {
       hidden: { scale: 0.95, opacity: 0 },
@@ -58,93 +80,70 @@ export const effectLibrary = {
     exit: 'exit',
   },
 
-  /// --- REVISED: Polished Button Hover/Press Effect ---
+  /**
+   * A smooth expand/collapse animation for dropdowns, like nav folders.
+   */
+  smoothDropdown: {
+    variants: {
+      hidden: { opacity: 0, height: 0, transition: { when: "afterChildren" } },
+      visible: { opacity: 1, height: "auto", transition: { when: "beforeChildren", staggerChildren: 0.07 } },
+    },
+    initial: 'hidden',
+    animate: 'visible',
+    exit: 'hidden',
+  },
+  
+  // =================================================================
+  // --- Interactive & Feedback Effects ---
+  // Effects that respond directly to user interaction.
+  // =================================================================
+
+  /**
+   * A fast and clear hover/press effect for buttons. Lifts and scales.
+   */
   buttonPress: {
-    whileHover: { 
-      y: -4,         // A more noticeable lift
-      scale: 1.03,   // Make it pop towards the user
-      boxShadow: "0 10px 20px -5px rgb(0 0 0 / 0.15)", // A softer, more prominent shadow
-    },
-    whileTap: { 
-      scale: 0.97,   // A slightly more subtle press
-      y: -2,
-    },
-    // The key change: switch from 'spring' to a fast 'tween'
-    transition: { 
-      duration: 0.15, 
-      ease: "easeOut" 
-    },
+    whileHover: { y: -4, scale: 1.03, boxShadow: "0 10px 20px -5px rgb(0 0 0 / 0.15)" },
+    whileTap: { scale: 0.97, y: -2 },
+    transition: { duration: 0.15, ease: "easeOut" },
   },
 
-  // --- NEW: The "After" Effect ---
+  /**
+   * A satisfying "jiggle" animation triggered after a successful click action.
+   */
   clickJiggle: {
     variants: {
-      // The state the button is in normally
-      rest: {
-        rotate: 0,
-      },
-      // The state we will animate TO
+      rest: { rotate: 0 },
       jiggle: {
-        rotate: [0, -5, 5, -5, 5, 0], // A keyframe animation for the jiggle
+        rotate: [0, -5, 5, -5, 5, 0],
         transition: { duration: 0.4, ease: 'easeInOut' },
-      },
-    },
-    initial: "rest", // Start in the 'rest' state
-  },
-
-  // --- NEW: Mind-Blowing 3D Tilt Effect ---
-  interactiveTilt: {
-    whileHover: {
-      scale: 1.05, // Make the card slightly larger
-      // The magic happens here: rotate based on hover
-      rotateX: 10, // Tilts back
-      rotateY: 0,  // No side-to-side tilt by default
-      boxShadow: "0 25px 50px -12px rgb(0 0 0 / 0.25)", // A deeper shadow
-    },
-    transition: {
-      type: 'spring',
-      stiffness: 300,
-      damping: 20,
-    },
-  },
-
-  // --- NEW: Form Field Validation Effect ---
-  fieldErrorShake: {
-    variants: {
-      // The default, resting state
-      rest: { x: 0 },
-      // The state we animate to when an error occurs
-      shake: {
-        x: [0, -8, 8, -8, 8, 0], // Keyframe animation for a horizontal shake
-        transition: { duration: 0.4, ease: "easeInOut" },
       },
     },
     initial: "rest",
   },
 
-  // --- NEW: Smooth Dropdown for Navigation Folders ---
-  smoothDropdown: {
+  /**
+   * A subtle 3D tilt effect for cards on hover.
+   */
+  interactiveTilt: {
+    whileHover: {
+      scale: 1.05,
+      rotateX: 10,
+      boxShadow: "0 25px 50px -12px rgb(0 0 0 / 0.25)",
+    },
+    transition: { type: 'spring', stiffness: 300, damping: 20 },
+  },
+
+  /**
+   * A rapid "shake" animation to indicate a validation error on a form field.
+   */
+  fieldErrorShake: {
     variants: {
-      hidden: {
-        opacity: 0,
-        height: 0,
-        transition: {
-          when: "afterChildren", // Animate out after children have animated out
-          staggerChildren: 0.05,
-          staggerDirection: -1,
-        }
-      },
-      visible: {
-        opacity: 1,
-        height: "auto", // Automatically adjust to the height of the content
-        transition: {
-          when: "beforeChildren", // Animate in before children start animating
-          staggerChildren: 0.07,
-        }
+      rest: { x: 0 },
+      shake: {
+        x: [0, -8, 8, -8, 8, 0],
+        transition: { duration: 0.4, ease: "easeInOut" },
       },
     },
-    initial: "hidden",
-    animate: "visible",
-    exit: "hidden",
+    initial: "rest",
   },
 };
