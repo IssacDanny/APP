@@ -1,7 +1,7 @@
-// src/App.jsx
-
 import React, { useState, useEffect } from 'react';
 import {Routes, Route } from 'react-router-dom';
+import { Toaster } from 'react-hot-toast';
+import { AnimatePresence } from 'framer-motion';
 
 // --- Compiler Imports ---
 import { linkSchemas } from './compiler/linker';
@@ -33,10 +33,11 @@ function App() {
           throw new Error(`Failed to fetch schemas: ${response.statusText}`);
         }
         const serviceSchemas = await response.json();
+        const flattenedSchemas = serviceSchemas.flat();
         console.log("✅ [Step 1/4] Fetched service schemas:", serviceSchemas);
 
         // 2. Link schemas into one grand schema using our linker
-        const grandSchema = linkSchemas(serviceSchemas);
+        const grandSchema = linkSchemas(flattenedSchemas);
         console.log("✅ [Step 2/4] Linked into grand schema:", grandSchema);
 
         // 3. Parse the grand schema to generate the Abstract Syntax Tree (AST)
@@ -79,41 +80,34 @@ function App() {
   // If we have the UI IR, render the full application.
   return (
     <AppRuntimeProvider>
-      {/* The GlobalFormModal is placed here so it can overlay any page */}
-      <GlobalFormModal />
-
-      <Routes>
-        {/* 
-          This is a "Layout Route". 
-          1. It matches the base path "/".
-          2. It renders the AppShell via the RenderEngine.
-          3. All nested <Route> components will be rendered inside the AppShell's <Outlet />.
-        */}
+      <Toaster /* ... */ />
+      <AnimatePresence>
+        <GlobalFormModal />
+      </AnimatePresence>
+      <Routes location={location} key={location.pathname}> {/* 3. Pass location and key to Routes */}
         <Route path="/" element={<RenderEngine ir={uiIR} />} >
-          
-          {/* The default page shown when visiting the root URL "/" */}
-          <Route index element={
-            <div style={{ textAlign: 'center', paddingTop: '4rem', color: '#666' }}>
-              <h2>Welcome to the Admin Panel</h2>
-              <p>Please select a resource from the navigation menu to begin.</p>
-            </div>
-          }/>
+            
+            <Route index element={
+              <div style={{ textAlign: 'center', paddingTop: '4rem', color: '#666' }}>
+                <h2>Welcome to the Admin Panel</h2>
+                <p>Please select a resource from the navigation menu to begin.</p>
+              </div>
+            }/>
 
-          {/* Dynamically create a route for each resource page defined in the IR */}
-          {uiIR.props.routes.map(route => (
-            <Route 
-              key={route.path}
-              path={route.path} 
-              element={<RenderEngine ir={route.element} />} 
-            />
-          ))}
+            {uiIR.props.routes.map(route => (
+              <Route 
+                key={route.path}
+                path={route.path} 
+                element={<RenderEngine ir={route.element} />} 
+              />
+            ))}
 
-          {/* A fallback route for any path not matched */}
-          <Route path="*" element={<h2>404: Page Not Found</h2>} />
+            <Route path="*" element={<h2>404: Page Not Found</h2>} />
 
         </Route>
       </Routes>
     </AppRuntimeProvider>
+
   );
 }
 

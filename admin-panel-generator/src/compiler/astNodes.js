@@ -1,5 +1,3 @@
-// src/compiler/astNodes.js
-
 // --- Base Class & Factory ---
 
 /**

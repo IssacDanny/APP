@@ -24,7 +24,7 @@ export function linkSchemas(serviceSchemas) {
   
   // Simply place the collected service schemas into the 'navigation' slot.
   grandSchema.navigation = serviceSchemas;
-
+  
   console.log("Linker: Successfully linked service schemas into the grand schema.");
   
   return grandSchema;

@@ -6,22 +6,18 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
 :root {
-  /* Colors */
   --color-primary: #3c82f6;
   --color-primary-dark: #2563eb;
   --color-text-header: #111827;
   --color-text-body: #374151;
   --color-text-muted: #6b7280;
   --color-text-on-primary: #ffffff;
-  --color-background: #f3f4f6; /* Light gray background */
-  --color-surface: #ffffff;    /* White for cards/tables */
+  --color-background: #f3f4f6;
+  --color-surface: #ffffff;
   --color-border: #e5e7eb;
-  --color-hover-light: #eff6ff; /* A very light blue for hovers */
-
-  /* Sizing & Spacing */
-  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --color-hover-light: #eff6ff;
+  --font-sans: 'Inter', -apple-system, sans-serif;
   --sidebar-width: 250px;
-  --border-radius-sm: 4px;
   --border-radius-md: 8px;
   --card-padding: 1.5rem;
   --box-shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
@@ -65,6 +61,8 @@ body {
   flex: 1;
   padding: 2rem;
   overflow-y: auto;
+  /* THIS IS THE FOUNDATION FOR 3D EFFECTS WITHIN THE MAIN AREA */
+  perspective: 1500px; 
 }
 
 /* ==========================================================================
@@ -136,7 +134,10 @@ body {
 }
 
 .nav-folder-icon { width: 1em; text-align: center; }
-.nav-folder-items { padding-left: 1.25rem; }
+.nav-folder-items {
+  padding-left: 1.25rem;
+  overflow: hidden; /* Add this to hide content as the height animates */
+}
 
 .user-menu {
   margin-top: 1.5rem;
@@ -155,17 +156,22 @@ body {
   cursor: pointer;
   font-size: 0.9rem;
   font-weight: 600;
-  /* 3. Add transitions for a polished feel */
-  transition: var(--transition-fast);
   box-shadow: var(--box-shadow-sm);
+  /* 
+    THIS IS CRUCIAL: It ensures the button animates smoothly
+    when you MOUSE OUT. Framer Motion handles mouse-in. 
+  */
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+  /* Performance hint for the browser */
+  will-change: transform;
 }
 
 .btn:hover {
+  /* For non-primary buttons, give a subtle background change */
+  background-color: #f9fafb;
   border-color: #d1d5db;
-  box-shadow: var(--box-shadow-md);
-  /* 4. Add a subtle lift effect */
-  transform: translateY(-2px);
 }
+
 .btn:active {
   transform: translateY(-1px);
 }
@@ -181,46 +187,75 @@ body {
 }
 
 /* ==========================================================================
-   Data Table (as a "Card")
+   THE FIX: Data List (replaces Data Table)
    ========================================================================== */
-.data-table {
-  width: 100%;
-  border-collapse: collapse;
+.data-list {
   background-color: var(--color-surface);
   border-radius: var(--border-radius-md);
   box-shadow: var(--box-shadow-md);
   border: 1px solid var(--color-border);
+  padding: var(--card-padding);
 }
 
-.data-table th, .data-table td {
-  padding: 1rem 1.5rem;
+.data-list-header, .data-list-row {
+  display: grid;
+  align-items: center;
+  gap: 1.5rem;
+  padding: 0 1rem;
+}
+
+.data-list-header {
+  padding-bottom: 1rem;
+  margin-bottom: 1rem;
   border-bottom: 1px solid var(--color-border);
-  text-align: left;
-}
-
-.data-table thead tr {
-  background-color: #f9fafb;
-}
-
-.data-table th {
   font-weight: 600;
-  font-size: 0.75rem; /* Smaller header font */
+  font-size: 0.75rem;
   text-transform: uppercase;
   color: var(--color-text-muted);
   letter-spacing: 0.05em;
 }
 
-.data-table tbody tr:last-child td {
-  border-bottom: none;
+.data-list-body {
+  /* This is the container for the animated rows */
 }
 
-.data-table tbody tr {
-  /* 5. Add a transition for the row hover effect */
+.data-list-row {
+  padding: 1rem;
+  border-radius: var(--border-radius-md);
   transition: var(--transition-fast);
+  transform-style: preserve-3d;
 }
-.data-table tbody tr:hover {
+
+.data-list-row:hover {
   background-color: var(--color-hover-light);
+  transform: scale(1.02); /* Add a nice lift effect on hover */
 }
+
+.data-list-cell {
+  display: flex;
+  align-items: center;
+}
+
+.data-list-actions {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: flex-end;
+}
+
+
+/* ==========================================================================
+   Status Pills (If you use them for orders, etc.)
+   ========================================================================== */
+.status-pill {
+    padding: 0.5rem 1rem;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    font-weight: 600;
+}
+.status-pending { background: #feefc3; color: #ffb400; }
+.status-shipped, .status-delivered, .status-paid { background: #dcedc8; color: #4caf50; }
+.status-declined, .status-refunded { background: #ffcdd2; color: #f44336; }
+.status-processing { background: #d1c4e9; color: #673ab7; }
 
 /* ==========================================================================
    Modal & RJSF Form
@@ -263,12 +298,26 @@ body {
   justify-content: flex-end;
 }
 
+.form-group {
+  margin-bottom: 1.25rem;
+}
+
+/* Style for the label (the title) */
 .form-group label {
   display: block;
   margin-bottom: 0.5rem;
   font-weight: 500;
   font-size: 0.9rem;
+  color: var(--color-text-header);
 }
+
+/* Style for the red asterisk on required fields */
+.required-asterisk {
+  color: #ef4444; /* A nice red */
+  margin-left: 0.25rem;
+}
+
+/* Style for the input fields themselves */
 .form-group input, .form-group select, .form-group textarea {
   display: block;
   width: 100%;
@@ -278,9 +327,55 @@ body {
   border-radius: var(--border-radius-md);
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
+
 .form-group input:focus {
   outline: none;
   border-color: var(--color-primary);
-  /* A nice focus ring */
   box-shadow: 0 0 0 3px rgba(60, 130, 246, 0.3);
+}
+
+/* ==========================================================================
+   Detail View
+   ========================================================================== */
+.detail-view-card {
+  background: var(--color-surface);
+  border-radius: var(--border-radius-md);
+  padding: var(--card-padding);
+  box-shadow: var(--box-shadow-md);
+  border: 1px solid var(--color-border);
+  display: grid;
+  grid-template-columns: 1fr; /* Default to a single column */
+  gap: 1.5rem;
+  transform-style: preserve-3d;
+}
+
+/* On larger screens, use two columns */
+@media (min-width: 768px) {
+  .detail-view-card {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.detail-field {
+  background-color: #f9fafb;
+  padding: 1rem;
+  border-radius: var(--border-radius-md);
+  border: 1px solid var(--color-border);
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.detail-field-label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.detail-field-value {
+  font-size: 1.1rem;
+  color: var(--color-text-header);
+  font-weight: 500;
 }

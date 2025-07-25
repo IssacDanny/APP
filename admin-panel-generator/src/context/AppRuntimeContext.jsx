@@ -1,7 +1,9 @@
 // src/context/AppRuntimeContext.js
 
 import React, { createContext, useState, useContext, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import jsonata from 'jsonata';
+import { toast } from 'react-hot-toast';
 
 // Define the base URL for our mock backend. In a real app, this would
 // come from an environment variable.
@@ -15,6 +17,7 @@ const AppRuntimeContext = createContext(null);
  * such as API calls and modal state management.
  */
 export function AppRuntimeProvider({ children }) {
+  const navigate = useNavigate();
   // --- State Management ---
 
   // State for controlling a global modal for forms.
@@ -105,7 +108,7 @@ export function AppRuntimeProvider({ children }) {
       }
       
       console.log('API Action Successful:', responseData);
-      alert('Success!');
+      toast.success('Action successful!');
 
       // On success, increment the data version to trigger UI refreshes
       setDataVersion(v => v + 1); 
@@ -114,10 +117,23 @@ export function AppRuntimeProvider({ children }) {
 
     } catch (e) {
       console.error('API Action Failed:', e);
-      alert(`Error: ${e.message}`);
+      toast.error(`Error: ${e.message}`);
       return false;
     }
   }, [closeModal]); // Dependency on `closeModal`
+
+   const handleNavigationAction = useCallback((actionConfig) => {
+    const { targetResource, targetId, targetView } = actionConfig;
+
+    let path = `/resources/${targetResource}`;
+    
+    if (targetView === 'detailView' && targetId) {
+      path += `/${targetId}`; // e.g., /resources/users/user-123
+    }
+    
+    console.log(`Programmatically navigating to: ${path}`);
+    navigate(path);
+  }, [navigate]);
 
   // The value object provided to all consuming components.
   const value = {
@@ -129,6 +145,7 @@ export function AppRuntimeProvider({ children }) {
     openFormModal,
     closeModal,
     executeApiAction,
+    handleNavigationAction,
   };
 
   return (
