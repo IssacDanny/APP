@@ -1,8 +1,9 @@
 import React from 'react';
-import { type IVisitor, Resource, TableViewSchema, FormAction, RetrieveAction } from './model';
+import { Link } from 'react-router-dom';
+import { type IVisitor, Resource, TableViewSchema, FormAction, RetrieveAction, DetailViewSchema } from './model';
 import { FormActionButton } from '../components/FormActionButton.tsx';
 import { DataTable } from '../components/DataTable.tsx';
-
+import { DetailView } from '../components/DetailView.tsx';
 // The Visitor is now stateless. It only structures the UI.
 export class ReactUIVisitor implements IVisitor {
   private data: any[];
@@ -13,37 +14,67 @@ export class ReactUIVisitor implements IVisitor {
     this.onFormSubmit = onFormSubmit;
   }
 
-  // No change here
+  /// This is the main entry point from the app.
+  // It decides whether to render a list view or a detail view.
   visitResource(resource: Resource) {
+    // We delegate to the specific view visitor.
+    return resource.viewSchema.accept(this, resource);
+  }
+
+  // Renders a data table view
+  visitTableView(view: TableViewSchema, resource: Resource) {
     const topLevelActions = Array.from(resource.actions.values())
       .filter(action => action.name === 'create');
+      
+    const rowLevelActions = Array.from(resource.actions.values())
+      .filter(action => ['update', 'delete'].includes(action.name));
+      
+    // DYNAMICALLY INJECT LINK LOGIC!
+    // If a detail view is possible (indicated by a 'retrieveByID' action),
+    // we modify the columns to add a link.
+    const hasDetailView = resource.actions.has('retrieveByID');
+    const linkedColumns = view.columns.map(col =>
+      // Let's link on the 'name' field by convention for this demo
+      (col.key === 'name' && hasDetailView)
+        ? { ...col, render: (item) => <Link to={`/${resource.name}/${item.id}`}>{item.name}</Link> }
+        : col
+    );
 
     return (
       <div className="resource-page">
-        <h1>{resource.viewSchema.title}</h1>
+        <h1>{view.title}</h1>
         <div className="toolbar">
           {topLevelActions.map(action => action.accept(this))}
         </div>
-        {resource.viewSchema.accept(this, resource)}
+        <DataTable
+          columns={linkedColumns}
+          data={this.data}
+          renderRowActions={(item) => (
+            <>
+              {rowLevelActions.map(action => action.accept(this, item))}
+            </>
+          )}
+        />
       </div>
     );
   }
 
-  // No change here
-  visitTableView(view: TableViewSchema, resource: Resource) {
+  // ✅ NEW METHOD: Renders a detail view
+  visitDetailView(view: DetailViewSchema, resource: Resource) {
+    // For a detail view, the data array will have only one item.
+    const item = this.data?.[0];
+
     const rowLevelActions = Array.from(resource.actions.values())
       .filter(action => ['update', 'delete'].includes(action.name));
 
     return (
-      <DataTable
-        columns={view.columns}
-        data={this.data}
-        renderRowActions={(item) => (
-          <>
-            {rowLevelActions.map(action => action.accept(this, item))}
-          </>
-        )}
-      />
+      <div className="resource-page">
+        <h1>{view.title}</h1>
+        <div className="toolbar">
+           {rowLevelActions.map(action => action.accept(this, item))}
+        </div>
+        <DetailView fields={view.layout} item={item} />
+      </div>
     );
   }
 

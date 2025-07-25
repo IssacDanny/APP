@@ -1,6 +1,7 @@
 import {
   Resource,
   TableViewSchema,
+  DetailViewSchema,
   FormAction,
   RetrieveAction,
   Action,
@@ -19,6 +20,8 @@ export function parseResource(manifest: any, resourceName: string): Resource {
   let viewSchema: ViewSchema;
   if (viewSchemaDef.viewType === 'table') {
     viewSchema = new TableViewSchema(viewSchemaDef.title, viewSchemaDef.columns);
+  } else if (viewSchemaDef.viewType === 'detail') { // <-- ADD THIS
+    viewSchema = new DetailViewSchema(viewSchemaDef.title, viewSchemaDef.layout);
   } else {
     throw new Error(`Unsupported viewType: ${viewSchemaDef.viewType}`);
   }

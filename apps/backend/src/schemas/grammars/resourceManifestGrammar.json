@@ -26,17 +26,11 @@
             "update": { "$ref": "#/definitions/FormAction" },
             "delete": { "$ref": "#/definitions/FormAction" }
           },
-          "additionalProperties": { "$ref": "#/definitions/FormAction" }
+          "additionalProperties": { "$ref": "#/definitions/FormAction" },
+          "required": ["retrieve"] 
         }
       },
-      "required": ["viewSchema", "actions"],
-      "allOf": [
-        {
-          "properties": {
-            "actions": { "required": ["retrieve"] }
-          }
-        }
-      ]
+      "required": ["viewSchema", "actions"]
     },
 
     "RetrieveAction": {

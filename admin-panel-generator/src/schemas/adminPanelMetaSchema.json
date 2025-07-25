@@ -1,0 +1,193 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://your-domain.com/schemas/adminPanelMetaSchema.v1.json",
+  "title": "Admin Panel Meta-Schema",
+  "description": "Defines the complete structure for generating an admin panel, including navigation, resources, views, actions, and data transformations.",
+  "type": "object",
+  "properties": {
+    "panelName": {
+      "type": "string",
+      "description": "The name displayed at the top of the admin panel."
+    },
+    "navigation": {
+      "type": "array",
+      "description": "The main navigation structure of the panel.",
+      "items": {
+        "$ref": "#/definitions/navigationItem"
+      }
+    }
+  },
+  "required": ["panelName", "navigation"],
+
+  "definitions": {
+    "navigationItem": {
+      "description": "A top-level item in the navigation bar. Can be a group of resources or a user menu.",
+      "oneOf": [
+        { "$ref": "#/definitions/resourceGroup" },
+        { "$ref": "#/definitions/userMenu" }
+      ]
+    },
+
+    "resourceGroup": {
+      "type": "object",
+      "properties": {
+        "type": { "const": "resourceGroup" },
+        "id": { "type": "string", "description": "A unique identifier for the navigation group (e.g., 'lists')." },
+        "title": { "type": "string", "description": "The display title for the navigation group (e.g., 'LISTS')." },
+        "resources": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/resource" }
+        }
+      },
+      "required": ["type", "id", "title", "resources"]
+    },
+
+    "userMenu": {
+      "type": "object",
+      "properties": {
+        "type": { "const": "userMenu" },
+        "id": { "const": "user", "description": "The fixed identifier for the user menu." },
+        "title": { "type": "string", "description": "The display title for the user menu (e.g., 'USER')." },
+        "items": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/userMenuItem" }
+        }
+      },
+      "required": ["type", "id", "title", "items"]
+    },
+    
+    "userMenuItem": {
+      "description": "An item within the user dropdown menu.",
+      "oneOf": [
+        { "$ref": "#/definitions/navigationLinkAction" },
+        { "$ref": "#/definitions/simpleApiAction" }
+      ]
+    },
+
+    "resource": {
+      "type": "object",
+      "description": "Defines a data resource like 'Products' or 'Users' that can be managed via CRUD.",
+      "properties": {
+        "id": { "type": "string", "description": "Unique identifier, used for routing (e.g., 'products')." },
+        "name": { "type": "string", "description": "Human-readable display name (e.g., 'Products')." },
+        "endpoint": { "type": "string", "description": "Base API endpoint for this resource." },
+        "views": {
+          "type": "object",
+          "properties": {
+            "listView": { "$ref": "#/definitions/view-table" },
+            "detailView": { "$ref": "#/definitions/view-details" }
+          },
+          "required": ["listView"]
+        },
+        "actions": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/action" }
+        }
+      },
+      "required": ["id", "name", "endpoint", "views", "actions"]
+    },
+
+    "view-table": {
+      "type": "object",
+      "properties": {
+        "type": { "const": "table" },
+        "columns": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "field": { "type": "string", "description": "The key of the data field to display in this column." },
+              "header": { "type": "string", "description": "The text to display in the column header." }
+            },
+            "required": ["field", "header"]
+          }
+        }
+      },
+      "required": ["type", "columns"]
+    },
+
+    "view-details": {
+       "type": "object",
+       "properties": {
+          "type": { "const": "details" },
+          "fields": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "field": { "type": "string", "description": "The key of the data field to display." },
+                "label": { "type": "string", "description": "The label for the data field." }
+              },
+              "required": ["field", "label"]
+            }
+          }
+        },
+        "required": ["type", "fields"]
+    },
+    
+    "action": {
+      "description": "A user-performable action. Can be one that requires complex input (form) or a simple one-click action.",
+      "oneOf": [
+        { "$ref": "#/definitions/formAction" },
+        { "$ref": "#/definitions/simpleApiAction" }
+      ]
+    },
+
+    "formAction": {
+      "type": "object",
+      "properties": {
+        "type": { "const": "form" },
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "target": { "enum": ["global", "item"], "description": "'global' appears on the list page, 'item' on a specific row/item." },
+        "method": { "enum": ["POST", "PUT", "PATCH"] },
+        "endpoint": { "type": "string", "description": "API endpoint for the action. Use {id} for item-specific targets." },
+        "formSchema": {
+          "type": "object",
+          "description": "A standard JSON Schema and optional uiSchema for RJSF.",
+          "properties": {
+            "schema": { "type": "object" },
+            "uiSchema": { "type": "object" }
+          },
+          "required": ["schema"]
+        },
+        "payloadTransform": {
+          "type": "string",
+          "description": "A JSONata expression to transform UI form data into the API payload. If omitted, a 1:1 mapping is assumed."
+        },
+        "dataMapTransform": {
+          "type": "string",
+          "description": "A JSONata expression to map API data into the shape needed to populate the form for editing. If omitted, a 1:1 mapping is assumed."
+        }
+      },
+      "required": ["type", "id", "name", "target", "method", "endpoint", "formSchema"]
+    },
+
+    "simpleApiAction": {
+      "type": "object",
+      "properties": {
+        "type": { "const": "simpleAction" },
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "target": { "enum": ["global", "item", "none"], "description": "'none' is used for context-less actions like logout." },
+        "method": { "enum": ["POST", "DELETE", "GET"] },
+        "endpoint": { "type": "string"},
+        "confirmationText": { "type": "string", "description": "If present, a confirmation dialog with this text will be shown before executing." }
+      },
+      "required": ["type", "id", "name", "target", "method", "endpoint"]
+    },
+
+    "navigationLinkAction": {
+      "type": "object",
+      "properties": {
+          "type": {"const": "navigationLink"},
+          "id": {"type": "string"},
+          "name": {"type": "string"},
+          "targetResource": {"type": "string", "description": "The 'id' of the resource to navigate to."},
+          "targetView": {"enum": ["detailView", "listView"], "default": "detailView"},
+          "targetId": {"type": "string", "description": "A variable representing the ID of the resource to view, e.g., '@currentUser'."}
+      },
+      "required": ["type", "id", "name", "targetResource"]
+    }
+  }
+}

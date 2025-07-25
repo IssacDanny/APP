@@ -40,3 +40,35 @@
 .read-the-docs {
   color: #888;
 }
+
+.app-layout {
+  display: flex;
+}
+.sidebar {
+  width: 200px;
+  background: #f8f9fa;
+  padding: 1rem;
+  height: 100vh;
+  border-right: 1px solid #dee2e6;
+}
+.sidebar h2 {
+  margin-top: 0;
+}
+.sidebar ul {
+  list-style: none;
+  padding: 0;
+}
+.sidebar li a {
+  display: block;
+  padding: 0.5rem;
+  text-decoration: none;
+  color: #007bff;
+  border-radius: 4px;
+}
+.sidebar li a:hover {
+  background-color: #e9ecef;
+}
+.content {
+  flex-grow: 1;
+  padding: 2rem;
+}

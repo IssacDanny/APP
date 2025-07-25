@@ -62,6 +62,34 @@ export const serviceManifest = {
       },
     },
   },
+
+  // Add the new users resource
+  users: {
+    viewSchema: {
+      type: 'view',
+      // This is our new detail view!
+      viewType: 'detail',
+      // Title with a template!
+      title: 'User Details: {name}',
+      layout: [
+        { key: 'id', label: 'User ID' },
+        { key: 'name', label: 'Full Name' },
+        { key: 'email', label: 'Email Address' },
+        { key: 'role', label: 'Role', displayAs: 'badge' }, // Using displayAs!
+      ]
+    },
+    actions: {
+      // The action to get a list of users (for navigation)
+      retrieve: {
+        api: { method: 'get', path: '/api/users' }
+      },
+      // The action to get a single user by their ID
+      retrieveByID: {
+        label: "View User",
+        api: { method: 'get', path: '/api/users/{id}' }
+      },
+    }
+  },
 };
 
 // Mock data for the demo
@@ -69,4 +97,10 @@ export const projectData = [
   { id: uuidv4(), name: 'Marketing Campaign Q3', status: 'Active' },
   { id: uuidv4(), name: 'New Billing System', status: 'Planning' },
   { id: uuidv4(), name: 'Customer Portal Launch', status: 'Completed' },
+];
+
+// Add some mock user data
+export const userData = [
+  { id: 'usr-1', name: 'Alice', email: 'alice@example.com', role: 'Admin' },
+  { id: 'usr-2', name: 'Bob', email: 'bob@example.com', role: 'Editor' },
 ];

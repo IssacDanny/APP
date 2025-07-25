@@ -7,6 +7,7 @@ export interface IVisitor {
   visitResource(resource: Resource): any;
   // Note: We pass the resource to the view visitor for context
   visitTableView(view: TableViewSchema, resource: Resource): any;
+  visitDetailView(view: DetailViewSchema, resource: Resource): any;
   visitFormAction(action: FormAction, context?: any): any;
   visitRetrieveAction(action: RetrieveAction): any;
 }
@@ -42,6 +43,16 @@ export class TableViewSchema extends ViewSchema {
 
   override accept(visitor: IVisitor, resource: Resource) {
     return visitor.visitTableView(this, resource);
+  }
+}
+
+// Add this new class to your model.ts file
+export class DetailViewSchema extends ViewSchema {
+  constructor(title: string, public layout: any[]) {
+    super(title, 'detail');
+  }
+  override accept(visitor: IVisitor, context: Resource) { // Note: context is now resource
+    return visitor.visitDetailView(this, context);
   }
 }
 

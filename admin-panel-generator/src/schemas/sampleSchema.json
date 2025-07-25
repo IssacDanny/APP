@@ -1,0 +1,70 @@
+{
+  "panelName": "My Awesome Admin",
+  "navigation": [
+    {
+      "type": "resourceGroup",
+      "id": "main-lists",
+      "title": "CONTENT",
+      "resources": [
+        {
+          "id": "products",
+          "name": "Products",
+          "endpoint": "/api/v1/products",
+          "views": {
+            "listView": {
+              "type": "table",
+              "columns": [
+                { "field": "name", "header": "Product Name" },
+                { "field": "stock", "header": "In Stock" }
+              ]
+            }
+          },
+          "actions": [
+            {
+              "type": "form",
+              "id": "create-product",
+              "name": "Create Product",
+              "target": "global",
+              "method": "POST",
+              "endpoint": "/api/v1/products",
+              "formSchema": {
+                "schema": {
+                  "title": "New Product",
+                  "type": "object",
+                  "properties": {
+                    "name": { "type": "string" },
+                    "stock": { "type": "number" }
+                  }
+                }
+              }
+            },
+            {
+              "type": "simpleAction",
+              "id": "delete-product",
+              "name": "Delete",
+              "target": "item",
+              "method": "DELETE",
+              "endpoint": "/api/v1/products/{id}",
+              "confirmationText": "Are you sure you want to delete this product?"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "userMenu",
+      "id": "user",
+      "title": "USER",
+      "items": [
+        {
+          "type": "simpleAction",
+          "id": "logout",
+          "name": "Logout",
+          "target": "none",
+          "method": "POST",
+          "endpoint": "/api/auth/logout"
+        }
+      ]
+    }
+  ]
+}
