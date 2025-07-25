@@ -1,20 +1,21 @@
 {
-  "panelName": "My Awesome Admin",
+  "panelName": "Unified Admin Panel",
   "navigation": [
     {
       "type": "resourceGroup",
-      "id": "main-lists",
-      "title": "CONTENT",
+      "id": "inventory-service",
+      "title": "INVENTORY SERVICE",
       "resources": [
         {
           "id": "products",
           "name": "Products",
-          "endpoint": "/api/v1/products",
+          "endpoint": "/api/inventory/products",
           "views": {
             "listView": {
               "type": "table",
               "columns": [
                 { "field": "name", "header": "Product Name" },
+                { "field": "category", "header": "Category" },
                 { "field": "stock", "header": "In Stock" }
               ]
             }
@@ -26,43 +27,141 @@
               "name": "Create Product",
               "target": "global",
               "method": "POST",
-              "endpoint": "/api/v1/products",
+              "endpoint": "/api/inventory/products",
               "formSchema": {
                 "schema": {
                   "title": "New Product",
                   "type": "object",
+                  "required": ["productName", "categoryId"],
                   "properties": {
-                    "name": { "type": "string" },
-                    "stock": { "type": "number" }
+                    "productName": { "type": "string", "title": "Product Name" },
+                    "stockLevel": { "type": "number", "title": "Stock Level", "default": 0 },
+                    "categoryId": { "type": "string", "title": "Category ID" }
+                  }
+                }
+              },
+              "payloadTransform": "{ 'name': productName, 'stock': stockLevel, 'categoryId': categoryId }"
+            }
+          ]
+        },
+        {
+          "id": "categories",
+          "name": "Categories",
+          "endpoint": "/api/inventory/categories",
+          "views": {
+            "listView": {
+              "type": "table",
+              "columns": [
+                { "field": "name", "header": "Category Name" },
+                { "field": "description", "header": "Description" }
+              ]
+            }
+          },
+          "actions": [
+            {
+              "type": "form",
+              "id": "create-category",
+              "name": "Create Category",
+              "target": "global",
+              "method": "POST",
+              "endpoint": "/api/inventory/categories",
+              "formSchema": {
+                "schema": {
+                  "title": "New Category",
+                  "type": "object",
+                  "properties": {
+                    "name": { "type": "string", "title": "Name" },
+                    "description": { "type": "string", "title": "Description" }
                   }
                 }
               }
-            },
-            {
-              "type": "simpleAction",
-              "id": "delete-product",
-              "name": "Delete",
-              "target": "item",
-              "method": "DELETE",
-              "endpoint": "/api/v1/products/{id}",
-              "confirmationText": "Are you sure you want to delete this product?"
             }
           ]
         }
       ]
     },
     {
-      "type": "userMenu",
-      "id": "user",
-      "title": "USER",
-      "items": [
+      "type": "resourceGroup",
+      "id": "user-service",
+      "title": "USER MANAGEMENT",
+      "resources": [
         {
-          "type": "simpleAction",
-          "id": "logout",
-          "name": "Logout",
-          "target": "none",
-          "method": "POST",
-          "endpoint": "/api/auth/logout"
+          "id": "users",
+          "name": "Users",
+          "endpoint": "/api/users/profiles",
+          "views": {
+            "listView": {
+              "type": "table",
+              "columns": [
+                { "field": "fullName", "header": "Full Name" },
+                { "field": "email", "header": "Email Address" },
+                { "field": "role", "header": "Role" }
+              ]
+            }
+          },
+          "actions": [
+            {
+              "type": "form",
+              "id": "edit-user",
+              "name": "Edit User",
+              "target": "item",
+              "method": "PUT",
+              "endpoint": "/api/users/profiles/{id}",
+              "formSchema": {
+                "schema": {
+                  "title": "Edit User",
+                  "type": "object",
+                  "properties": {
+                    "firstName": { "type": "string", "title": "First Name" },
+                    "lastName": { "type": "string", "title": "Last Name" },
+                    "email": { "type": "string", "title": "Email", "format": "email" }
+                  }
+                }
+              },
+              "payloadTransform": "{ 'fullName': firstName & ' ' & lastName, 'email': email }",
+              "dataMapTransform": "{ 'firstName': $split(fullName, ' ')[0], 'lastName': $split(fullName, ' ')[1], 'email': email }"
+            }
+          ]
+        },
+        {
+          "id": "roles",
+          "name": "Roles",
+          "endpoint": "/api/users/roles",
+          "views": {
+            "listView": { "type": "table", "columns": [{ "field": "name", "header": "Role Name" }] }
+          },
+          "actions": [
+            {
+              "type": "form",
+              "id": "edit-role-permissions",
+              "name": "Edit Permissions",
+              "target": "item",
+              "method": "PUT",
+              "endpoint": "/api/users/roles/{id}/permissions",
+              "formSchema": {
+                "schema": {
+                  "title": "Edit Role Permissions",
+                  "type": "object",
+                  "properties": {
+                    "permissions": {
+                      "type": "array",
+                      "title": "Permissions",
+                      "items": {
+                        "type": "string",
+                        "enum": ["read:products", "write:products", "delete:products", "read:users", "write:users"]
+                      },
+                      "uniqueItems": true
+                    }
+                  }
+                },
+                "uiSchema": {
+                  "permissions": {
+                    "ui:widget": "checkboxes"
+                  }
+                }
+              }
+            }
+          ]
         }
       ]
     }

@@ -4,21 +4,8 @@ import addFormats from "ajv-formats";
 // Import the root of our AST and the factory which it uses internally.
 import { AdminPanelNode } from './astNodes.js'; 
 
-
-// --- NEW METHOD FOR LOADING JSON ---
-// Import Node.js built-in modules to read the file
-import { readFileSync } from 'fs';
-import { resolve, dirname } from 'path';
-import { fileURLToPath } from 'url';
-
-// Helper to get the current directory path in an ES module
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-
-// Read the schema file synchronously and parse it
-const metaSchemaPath = resolve(__dirname, '../schemas/adminPanelMetaSchema.json');
-const adminPanelMetaSchema = JSON.parse(readFileSync(metaSchemaPath, 'utf8'));
-// --- END OF NEW METHOD ---
+// Import the grammar (the meta-schema) we will validate against.
+import adminPanelMetaSchema from '../schemas/adminPanelMetaSchema.json';
 
 // --- AJV Setup ---
 // Initialize and configure AJV once for the module. This is more efficient
