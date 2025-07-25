@@ -1,225 +1,268 @@
 import React, { useState, useEffect } from 'react';
-import { NavLink as RouterNavLink, Outlet, useNavigate } from 'react-router-dom';
+import { NavLink as RouterNavLink, Outlet } from 'react-router-dom';
 import Form from '@rjsf/core';
 import validator from '@rjsf/validator-ajv8';
 import jsonata from 'jsonata';
 
-import { useAppRuntime } from '../context/AppRuntimeContext.js';
-import RenderEngine from './RenderEngine.jsx'; // For rendering nested IR (e.g., actions)
+// 1. Import the stylesheet. This makes all our classNames work.
+import './runtime.css';
 
-// --- Layout & Navigation Components ---
+// 2. Import the runtime context hook to access shared services.
+import { useAppRuntime } from '../context/AppRuntimeContext';
 
-export const AppShell = ({ title, navigation }) => ( // Remove 'children' prop, it's now handled by Outlet
+// 3. Import the RenderEngine, which will be used to render nested IR.
+//    (We will create this file in the next step).
+import { RenderEngine } from './RenderEngine';
+
+/**
+ * The componentMap is a "dictionary" that the RenderEngine uses to find the correct
+ * React component for a given IR 'component' name. We populate it after each
+*  component definition.
+ */
+export const componentMap = {};
+
+// =================================================================
+// --- Shell and Layout Components ---
+// =================================================================
+
+export const AppShell = ({ title, navigation }) => (
   <div className="app-shell">
-    <aside className="sidebar">
-      <h1>{title}</h1>
+    <aside className="app-sidebar">
+      <h1 className="app-sidebar-header">{title}</h1>
       <nav>
-        {/* The RenderEngine correctly renders the NavLink components here */}
-        {navigation.map((navSpec, i) => <RenderEngine key={i} spec={navSpec} />)}
+        {navigation.map((item, index) => <RenderEngine key={index} ir={item} />)}
       </nav>
     </aside>
-    <main className="content-area">
-      {/* 
-        THIS IS THE FIX:
-        The <Outlet /> component tells React Router where to render the
-        element of the matched child route (e.g., the ResourcePageLayout).
-      */}
-      <Outlet />
+    <main className="app-main-content">
+      <Outlet /> {/* This is where React Router renders the active page */}
     </main>
   </div>
 );
-
-export const NavMenuGroup = ({ title, children }) => (
-  <div className="nav-group">
-    <h4>{title}</h4>
-    <ul>{children}</ul>
-  </div>
-);
-
-export const UserMenu = ({ title, children }) => (
-  <div className="nav-group user-menu">
-    <h4>{title}</h4>
-    <ul>{children}</ul>
-  </div>
-);
-
-export const NavLink = ({ text, to }) => (
-  <li><RouterNavLink to={to}>{text}</RouterNavLink></li>
-);
-
-export const MenuLink = ({ text, actionConfig }) => {
-  const navigate = useNavigate();
-
-  const handleClick = (e) => {
-    e.preventDefault(); // Prevent default link behavior if wrapped in <a>
-    
-    // For now, we only handle navigation to resource list views.
-    // A full implementation would handle detail views and special IDs.
-    if (actionConfig.type === 'navigate' && actionConfig.resource) {
-      const path = `/resources/${actionConfig.resource}`;
-      console.log("Navigating to:", path);
-      navigate(path);
-    } else {
-      console.warn("Unsupported MenuLink action:", actionConfig);
-    }
-  };
-
-  // We'll render it as a button-like link inside a list item for styling
-  return (
-    <li>
-      <a href="#" onClick={handleClick}>{text}</a>
-    </li>
-  );
-};
+componentMap.AppShell = AppShell;
 
 export const ResourcePageLayout = ({ title, globalActions, listView }) => (
   <div>
-    <header className="page-header">
-      <h2>{title}</h2>
-      <div className="global-actions">
-        {globalActions.map((actionSpec, i) => <RenderEngine key={i} spec={actionSpec} />)}
+    <header className="resource-page-header">
+      <h2 className="resource-page-title">{title}</h2>
+      <div className="resource-page-actions">
+        {globalActions.map((action, index) => <RenderEngine key={index} ir={action} />)}
       </div>
     </header>
-    <div className="page-content">
-      <RenderEngine spec={listView} />
+    <hr className="resource-page-divider" />
+    <RenderEngine ir={listView} />
+  </div>
+);
+componentMap.ResourcePageLayout = ResourcePageLayout;
+
+// =================================================================
+// --- Navigation Components ---
+// =================================================================
+
+export const NavSection = ({ title, children }) => (
+  <div className="nav-section">
+    <h3 className="nav-section-title">{title}</h3>
+    {/* This component receives an array of IR objects.
+        We must map over them and use RenderEngine. */}
+    <div>
+      {children.map((childIr, index) => <RenderEngine key={index} ir={childIr} />)}
     </div>
   </div>
 );
+componentMap.NavSection = NavSection;
+componentMap.NavSection = NavSection; // Make sure the map entry is still there
 
-// --- Action & Data Components ---
+export const NavFolder = ({ title, children }) => {
+  const [isOpen, setIsOpen] = useState(false); // State to track expanded/collapsed
 
-export const DataTable = ({ columns, resourceId, resourceEndpoint, itemActions }) => {
-  const { apiCall, addRefreshListener, removeRefreshListener } = useAppRuntime();
-  const [data, setData] = useState([]);
-
-  const fetchData = async () => {
-    console.log(`Fetching data for ${resourceId}...`);
-    // Mock data for now. In a real app, this would be an API call.
-    // const response = await apiCall('GET', resourceEndpoint);
-    const mockData = [
-      { id: 'prod_1', name: 'Super Widget', stock: 100 },
-      { id: 'prod_2', name: 'Mega Gizmo', stock: 42 },
-    ];
-    setData(mockData);
+  const handleToggle = () => {
+    setIsOpen(!isOpen);
   };
 
-  useEffect(() => {
-    fetchData();
-    // Listen for refresh events for this specific resource
-    addRefreshListener(resourceId, fetchData);
-    return () => {
-      removeRefreshListener(resourceId, fetchData);
-    };
-  }, [resourceId]);
+  // Determine the icon based on the state
+  const icon = isOpen ? '▼' : '▶';
 
   return (
-    <table>
+    <div className="nav-folder">
+      <a href="#" className="nav-folder-toggle" onClick={handleToggle}>
+        <span className="nav-folder-icon">{icon}</span>
+        {title}
+      </a>
+      {/* Conditionally render the children based on the 'isOpen' state */}
+      {isOpen && (
+        <div className="nav-folder-items">
+          {children.map((childIr, index) => <RenderEngine key={index} ir={childIr} />)}
+        </div>
+      )}
+    </div>
+  );
+};
+componentMap.NavFolder = NavFolder;
+
+export const NavLink = ({ text, to }) => (
+  <RouterNavLink to={to} className="nav-link">
+    {text}
+  </RouterNavLink>
+);
+componentMap.NavLink = NavLink;
+
+export const UserMenu = ({ title, children }) => (
+  <div className="user-menu">
+    <h4 className="user-menu-title">{title}</h4>
+    {/* This component also receives an array of IR objects
+        and must use RenderEngine to render them. */}
+    <div>
+      {children.map((childIr, index) => <RenderEngine key={index} ir={childIr} />)}
+    </div>
+  </div>
+);
+componentMap.UserMenu = UserMenu;
+
+export const MenuLink = ({ text, actionConfig }) => {
+  // const { handleNavigation } = useAppRuntime(); // We would use this in a more advanced version
+  const handleClick = (e) => {
+    e.preventDefault();
+    alert(`Navigation action triggered: ${JSON.stringify(actionConfig)}`);
+  };
+  return <a href="#" onClick={handleClick} className="menu-link">{text}</a>;
+};
+componentMap.MenuLink = MenuLink;
+
+
+// =================================================================
+// --- Action Components (Buttons) ---
+// =================================================================
+
+export const FormButton = ({ text, actionConfig, itemData }) => {
+  const { openFormModal } = useAppRuntime();
+  return <button className="btn" onClick={() => openFormModal(actionConfig, itemData)}>{text}</button>;
+};
+componentMap.FormButton = FormButton;
+
+export const ActionButton = ({ text, actionConfig, itemData }) => {
+  const { executeApiAction } = useAppRuntime();
+
+  const handleClick = () => {
+    if (actionConfig.confirmationText) {
+      if (window.confirm(actionConfig.confirmationText)) {
+        executeApiAction(actionConfig, itemData);
+      }
+    } else {
+      executeApiAction(actionConfig, itemData);
+    }
+  };
+  return <button className="btn" onClick={handleClick}>{text}</button>;
+};
+componentMap.ActionButton = ActionButton;
+
+
+// =================================================================
+// --- Data Display Components ---
+// =================================================================
+
+export const DataTable = ({ columns, resourceEndpoint, itemActions }) => {
+  const [data, setData] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const { dataVersion } = useAppRuntime(); // Get the data version from context
+
+  useEffect(() => {
+    const fetchData = async () => {
+      setLoading(true);
+      try {
+        const response = await fetch(`http://localhost:3001${resourceEndpoint}`);
+        if (!response.ok) throw new Error("Network response was not ok");
+        const result = await response.json();
+        setData(result);
+      } catch (error) {
+        console.error("Failed to fetch data:", error);
+        // TODO: Set an error state to display to the user
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
+    // This effect re-runs whenever the resourceEndpoint changes OR when
+    // dataVersion is incremented by a successful API action.
+  }, [resourceEndpoint, dataVersion]);
+
+  if (loading) return <p>Loading data...</p>;
+
+  return (
+    <table className="data-table">
       <thead>
         <tr>
-          {columns.map(c => <th key={c.field}>{c.header}</th>)}
-          <th>Actions</th>
+          {columns.map(col => <th key={col.field}>{col.header}</th>)}
+          {itemActions.length > 0 && <th>Actions</th>}
         </tr>
       </thead>
       <tbody>
-        {data.map(item => (
-          <tr key={item.id}>
-            {columns.map(c => <td key={c.field}>{item[c.field]}</td>)}
-            <td className="item-actions">
-              {itemActions.map((actionSpec, i) => (
-                <RenderEngine key={i} spec={actionSpec} contextProps={{ item, resourceId }} />
-              ))}
-            </td>
+        {data.map(row => (
+          <tr key={row.id}>
+            {columns.map(col => <td key={col.field}>{row[col.field]}</td>)}
+            {itemActions.length > 0 && (
+              <td>
+                <div className="data-table-actions">
+                  {itemActions.map((actionIR, index) => (
+                    // CRITICAL: Pass the row data down to the action buttons
+                    <RenderEngine key={index} ir={actionIR} itemData={row} />
+                  ))}
+                </div>
+              </td>
+            )}
           </tr>
         ))}
       </tbody>
     </table>
   );
 };
+componentMap.DataTable = DataTable;
 
-// The "Action Runtime" Button Components
-export const ActionButton = ({ text, actionConfig, item, resourceId }) => {
-  const { apiCall, triggerRefresh } = useAppRuntime();
 
-  const handleClick = async () => {
-    let endpoint = actionConfig.endpoint;
-    if (item && item.id) {
-      endpoint = endpoint.replace('{id}', item.id);
+// =================================================================
+// --- Global Modal for Forms ---
+// NOTE: This component is NOT rendered by the RenderEngine.
+// It is placed once in App.jsx and controlled by AppRuntimeContext.
+// =================================================================
+
+export const GlobalFormModal = () => {
+  const { modalState, closeModal, executeApiAction } = useAppRuntime();
+  const { isOpen, config, initialData } = modalState;
+
+  if (!isOpen) return null;
+
+  // Handle data mapping for pre-filling edit forms
+  let formData = initialData;
+  if (initialData && config.dataMapTransform) {
+    try {
+      formData = jsonata(config.dataMapTransform).evaluate(initialData);
+    } catch(e) {
+      console.error("JSONata dataMapTransform error:", e);
+      // Fallback to initial data if transform fails
+      formData = initialData;
     }
-    
-    if (actionConfig.confirmationText && !window.confirm(actionConfig.confirmationText)) {
-      return;
-    }
+  }
 
-    await apiCall(actionConfig.method, endpoint, null);
-    triggerRefresh(resourceId); // Notify other components to refresh
-  };
-  return <button onClick={handleClick}>{text}</button>;
-};
-
-export const FormButton = ({ text, actionConfig, item, resourceId }) => {
-  const { openFormModal, apiCall, triggerRefresh } = useAppRuntime();
-
-  const handleClick = async () => {
-    let initialData = {};
-    if (item) { // This is an "edit" action
-      // Fetch fresh data for the item to edit
-      const endpoint = actionConfig.endpoint.replace('{id}', item.id);
-      const itemData = await apiCall('GET', endpoint); // Mock this for now
-      
-      if (actionConfig.dataMapTransform) {
-        // Apply inbound transformation (Service -> UI)
-        const expression = jsonata(actionConfig.dataMapTransform);
-        initialData = expression.evaluate(itemData || item);
-      } else {
-        initialData = itemData || item;
-      }
-    }
-    
-    openFormModal(actionConfig, initialData, () => {
-      // This callback is executed after the form is successfully submitted.
-      triggerRefresh(resourceId);
-
-    });
-  };
-  return <button onClick={handleClick}>{text}</button>;
-};
-
-// A generic modal that is controlled by the main App state
-export const FormModal = ({ isOpen, config, initialData, onFinished, onClose }) => {
-  const { apiCall } = useAppRuntime();
-  if (!isOpen || !config) return null;
-
-  const handleSubmit = async ({ formData }) => {
-    let finalPayload = formData;
-    let endpoint = config.endpoint;
-
-    if (initialData && initialData.id) {
-      endpoint = endpoint.replace('{id}', initialData.id);
-    }
-
-    if (config.payloadTransform) {
-      // Apply outbound transformation (UI -> Service)
-      const expression = jsonata(config.payloadTransform);
-      finalPayload = expression.evaluate(formData);
-    }
-
-    await apiCall(config.method, endpoint, finalPayload);
-    onClose();
-    if(onFinished) onFinished();
+  const handleSubmit = ({ formData }) => {
+    // Pass all necessary context to the API execution function
+    executeApiAction(config, initialData, formData);
   };
 
   return (
     <div className="modal-backdrop">
       <div className="modal-content">
-        <h3>{config.formSchema.schema.title || 'Form'}</h3>
+        <h3 className="modal-header">{config.formSchema.schema.title || config.name}</h3>
         <Form
           schema={config.formSchema.schema}
-          uiSchema={config.formSchema.uiSchema}
-          formData={initialData}
+          uiSchema={config.formSchema.uiSchema || {}}
+          formData={formData}
           validator={validator}
           onSubmit={handleSubmit}
-        />
-        <button className="close-modal" onClick={onClose}>Cancel</button>
+        >
+          {/* RJSF renders its own submit button by default. We provide our own for consistent styling. */}
+          <div className="modal-actions">
+              <button type="button" className="btn" onClick={closeModal}>Cancel</button>
+              <button type="submit" className="btn btn-primary">Submit</button>
+          </div>
+        </Form>
       </div>
     </div>
   );

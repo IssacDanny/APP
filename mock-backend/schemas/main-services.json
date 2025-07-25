@@ -1,0 +1,102 @@
+{
+  "type": "resourceGroup",
+  "id": "main-services",
+  "title": "Main Services",
+  "display": "section",
+  "items": [
+    {
+      "type": "resourceGroup",
+      "id": "ecommerce-folder",
+      "title": "E-Commerce",
+      "display": "folder",
+      "items": [
+        {
+          "type": "resource",
+          "id": "products",
+          "name": "Products",
+          "endpoint": "/products",
+          "views": {
+            "listView": {
+              "type": "table",
+              "columns": [
+                { "field": "id", "header": "ID" },
+                { "field": "name", "header": "Product Name" },
+                { "field": "stock", "header": "Stock" }
+              ]
+            }
+          },
+          "actions": [
+            {
+              "type": "form",
+              "id": "create-product",
+              "name": "Create Product",
+              "target": "global",
+              "method": "POST",
+              "endpoint": "/products",
+              "formSchema": {
+                "schema": {
+                  "title": "New Product",
+                  "type": "object",
+                  "properties": {
+                    "name": { "type": "string" },
+                    "stock": { "type": "number", "title": "Initial Stock" }
+                  },
+                  "required": ["name"]
+                }
+              }
+            }
+          ]
+        },
+        {
+          "type": "resource",
+          "id": "orders",
+          "name": "Orders",
+          "endpoint": "/orders",
+          "views": {
+            "listView": {
+              "type": "table",
+              "columns": [
+                { "field": "id", "header": "Order ID" },
+                { "field": "customerName", "header": "Customer" },
+                { "field": "status", "header": "Status" }
+              ]
+            }
+          },
+          "actions": []
+        }
+      ]
+    },
+    {
+      "type": "resourceGroup",
+      "id": "cms-folder",
+      "title": "Content (CMS)",
+      "display": "folder",
+      "items": [
+        {
+          "type": "resource",
+          "id": "posts",
+          "name": "Blog Posts",
+          "endpoint": "/posts",
+          "views": { "listView": { "type": "table", "columns": [{"field": "title", "header": "Title"}]}},
+          "actions": []
+        },
+        {
+          "type": "resource",
+          "id": "authors",
+          "name": "Authors",
+          "endpoint": "/authors",
+          "views": { "listView": { "type": "table", "columns": [{"field": "name", "header": "Name"}]}},
+          "actions": []
+        }
+      ]
+    },
+    {
+      "type": "resource",
+      "id": "pages",
+      "name": "Static Pages",
+      "endpoint": "/pages",
+      "views": { "listView": { "type": "table", "columns": [{"field": "title", "header": "Page Title"}]}},
+      "actions": []
+    }
+  ]
+}

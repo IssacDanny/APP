@@ -52,8 +52,10 @@ class ResourceGroupNode extends ASTNode {
     this.type = json.type;
     this.id = json.id;
     this.title = json.title;
-    // Recursively build the resource nodes
-    this.resources = json.resources.map(resJson => new ResourceNode(resJson));
+    this.display = json.display || 'section'; // Handle the new property
+
+    // THE FIX: Use `json.items` and the factory for recursive/polymorphic children.
+    this.items = (json.items || []).map(itemJson => createNode(itemJson));
   }
 
   accept(visitor) {
@@ -71,7 +73,7 @@ class UserMenuNode extends ASTNode {
     this.id = json.id;
     this.title = json.title;
     // Recursively build the user menu item nodes using the factory
-    this.items = json.items.map(itemJson => createNode(itemJson));
+    this.items = (json.items || []).map(itemJson => createNode(itemJson));
   }
   
   accept(visitor) {
@@ -218,6 +220,8 @@ function createNode(jsonObject) {
   switch (jsonObject.type) {
     case 'resourceGroup':
       return new ResourceGroupNode(jsonObject);
+    case 'resource':
+      return new ResourceNode(jsonObject);
     case 'userMenu':
       return new UserMenuNode(jsonObject);
     case 'form':

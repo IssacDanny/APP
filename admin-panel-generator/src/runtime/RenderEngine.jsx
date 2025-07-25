@@ -1,47 +1,56 @@
-// src/runtime/RenderEngine.jsx
-
 import React from 'react';
-// We will create ComponentLibrary in the next step.
-import * as ComponentLibrary from './ComponentLibrary.jsx';
+
+// Import the map that connects IR component names to actual React components.
+import { componentMap } from './ComponentLibrary';
 
 /**
- * The RenderEngine is a recursive component that translates an IR spec
- * into a tree of actual React components.
- * @param {{ spec: object, contextProps: object }} props
- *        - spec: The IR object for the component to render.
- *        - contextProps: Optional props to pass down to the component,
- *          like an `itemId` for actions within a table row.
+ * The RenderEngine is a recursive component that translates the UI Intermediate
+ * Representation (IR) into actual React components. It's the core of the
+ * runtime rendering system.
+ *
+ * @param {object} props
+ * @param {object} props.ir - The IR object for the component to render.
+ *                            Example: { component: 'NavLink', props: { text: 'Products', to: '/res/products' } }
+ * @param {object} [props.itemData] - Optional item-specific data passed down from a parent
+ *                                  (e.g., a table row's data passed to an action button).
+ * @returns {React.ReactElement | null} The rendered React component or null if rendering is not possible.
  */
-const RenderEngine = ({ spec, contextProps = {} }) => {
-  // If spec is null, an empty array, or not an object, render nothing.
-  if (!spec || typeof spec !== 'object' || Array.isArray(spec)) {
+export const RenderEngine = ({ ir, ...restProps }) => {
+  // --- 1. Guard Clauses ---
+  // If there's no IR or the IR is missing a component name, we can't render anything.
+  if (!ir || !ir.component) {
     return null;
   }
 
-  // Look up the component class/function from our library using the IR's `component` name.
-  const ComponentToRender = ComponentLibrary[spec.component];
+  // Destructure the component name and its props from the IR.
+  const { component: ComponentName, props: irProps } = ir;
 
-  if (!ComponentToRender) {
-    console.error(`Error: Component "${spec.component}" not found in ComponentLibrary.`);
-    return <div style={{ color: 'red' }}>Component "{spec.component}" not found.</div>;
+  // --- 2. Component Lookup ---
+  // Find the actual React component in our map.
+  const Component = componentMap[ComponentName];
+
+  // If the component name from the IR doesn't exist in our map, it's a
+  // configuration error. We render a clear error message for the developer.
+  if (!Component) {
+    console.error(`RenderEngine Error: Component "${ComponentName}" not found in componentMap.`);
+    // This visible error is extremely helpful during development.
+    return (
+      <div style={{ color: 'red', border: '1px solid red', padding: '8px', margin: '4px' }}>
+        Error: Unknown component type '{ComponentName}'
+      </div>
+    );
   }
 
-  // Recursively render children if they exist in the spec.
-  let renderedChildren = null;
-  if (spec.props && Array.isArray(spec.props.children)) {
-    renderedChildren = spec.props.children.map((childSpec, index) => (
-      <RenderEngine key={index} spec={childSpec} contextProps={contextProps} />
-    ));
-  }
-  
-  // Combine the props from the IR spec with any contextual props passed down.
-  const finalProps = { ...spec.props, ...contextProps };
+  // --- 3. Prop Combination ---
+  // Combine the props defined in the IR with any additional props passed directly
+  // to the RenderEngine. This is how we pass contextual data like `itemData`
+  // from a table row to an `ActionButton`.
+  const finalProps = { ...irProps, ...restProps };
 
-  return (
-    <ComponentToRender {...finalProps}>
-      {renderedChildren}
-    </ComponentToRender>
-  );
+  // --- 4. Render ---
+  // Render the looked-up component with the final, combined props.
+  // The components themselves (like AppShell or ResourcePageLayout) are responsible
+  // for using the RenderEngine again to render their own children if those children
+  // are also defined by IR.
+  return <Component {...finalProps} />;
 };
-
-export default RenderEngine;

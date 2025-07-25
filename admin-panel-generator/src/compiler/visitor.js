@@ -24,32 +24,44 @@ export class UIGeneratorVisitor extends VisitorBase {
       props: {
         title: node.panelName,
         navigation: navItemsIR,
-        // We also need to define the routes for the router
         routes: this.collectRoutes(node),
       }
     };
   }
 
   /**
-   * Visits a navigation group.
+   * Recursively visits a resource group, creating a "NavSection" or "NavFolder" IR.
    * @param {import('./astNodes').ResourceGroupNode} node
-   * @returns {object} The IR for a navigation menu group.
+   * @returns {object} The IR for a navigation section or folder.
    */
   visitResourceGroupNode(node) {
-    const resourceLinksIR = node.resources.map(resourceNode => ({
-      component: 'NavLink',
-      props: {
-        text: resourceNode.name,
-        // The 'to' prop corresponds to the route path we'll define.
-        to: `/resources/${resourceNode.id}`
-      }
-    }));
+    // 1. Visit all children first (post-order traversal)
+    const childrenIR = node.items.map(itemNode => itemNode.accept(this));
+
+    // 2. Determine the component type based on the 'display' property
+    const componentType = node.display === 'section' ? 'NavSection' : 'NavFolder';
 
     return {
-      component: 'NavMenuGroup',
+      component: componentType,
       props: {
         title: node.title,
-        children: resourceLinksIR
+        children: childrenIR,
+      }
+    };
+  }
+  
+  /**
+   * Visits a ResourceNode when it's part of the navigation tree.
+   * This is a "leaf" in the navigation hierarchy.
+   * @param {import('./astNodes').ResourceNode} node
+   * @returns {object} The IR for a direct navigation link.
+   */
+  visitResourceNode(node) {
+    return {
+      component: 'NavLink',
+      props: {
+        text: node.name,
+        to: `/resources/${node.id}`
       }
     };
   }
@@ -198,25 +210,63 @@ export class UIGeneratorVisitor extends VisitorBase {
   }
 
   /**
-   * A helper method to walk the AST and collect all possible routes
-   * for the application's router.
+   * A recursive helper method to walk the AST and collect all possible routes.
    * @param {import('./astNodes').AdminPanelNode} rootNode
    * @returns {Array<object>} A list of route definitions.
    */
   collectRoutes(rootNode) {
     const routes = [];
-    rootNode.navigation.forEach(navNode => {
-      if (navNode.type === 'resourceGroup') {
-        navNode.resources.forEach(resourceNode => {
+    
+    // Inner recursive function to traverse the navigation tree
+    const findResources = (items) => {
+      if (!items) return;
+      
+      for (const item of items) {
+        if (item.constructor.name === 'ResourceNode') {
           routes.push({
-            path: `/resources/${resourceNode.id}`,
-            // The element is the IR for the page to be rendered at this route.
-            element: this.generateResourcePageIR(resourceNode)
+            path: `/resources/${item.id}`,
+            // Generate the IR for the page that will be rendered at this route
+            element: this.generatePageIRForResource(item)
           });
-          // TODO: Add routes for detail views, e.g., `/resources/${resourceNode.id}/:itemId`
-        });
+        } else if (item.constructor.name === 'ResourceGroupNode') {
+          // If it's another group, recurse into its items
+          findResources(item.items);
+        }
       }
-    });
+    };
+
+    findResources(rootNode.navigation);
     return routes;
+  }
+
+  /**
+   * Generates the IR for a resource's main page content.
+   * Replaces the old `generateResourcePageIR` and is called by `collectRoutes`.
+   * @param {import('./astNodes').ResourceNode} resourceNode
+   * @returns {object} The IR for a resource's main page.
+   */
+  generatePageIRForResource(resourceNode) {
+    const listViewIR = resourceNode.views.listView.accept(this);
+    const globalActions = resourceNode.actions
+      .filter(action => action.target === 'global')
+      .map(action => action.accept(this));
+    
+    const itemActions = resourceNode.actions
+      .filter(action => action.target === 'item')
+      .map(action => action.accept(this));
+
+    // Inject necessary props into the list view's IR
+    listViewIR.props.itemActions = itemActions;
+    listViewIR.props.resourceId = resourceNode.id;
+    listViewIR.props.resourceEndpoint = resourceNode.endpoint;
+
+    return {
+      component: 'ResourcePageLayout',
+      props: {
+        title: resourceNode.name,
+        globalActions: globalActions,
+        listView: listViewIR,
+      }
+    };
   }
 }

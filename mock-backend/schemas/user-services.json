@@ -1,0 +1,24 @@
+{
+  "type": "userMenu",
+  "id": "user",
+  "title": "User Account",
+  "items": [
+    {
+      "type": "navigationLink",
+      "id": "view-profile",
+      "name": "My Profile",
+      "targetResource": "users",
+      "targetId": "user-123",
+      "targetView": "detailView"
+    },
+    {
+      "type": "simpleAction",
+      "id": "logout",
+      "name": "Logout",
+      "target": "none",
+      "method": "POST",
+      "endpoint": "/auth/logout",
+      "confirmationText": "Are you sure you want to log out?"
+    }
+  ]
+}

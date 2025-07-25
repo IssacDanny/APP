@@ -1,165 +1,119 @@
 // src/App.jsx
 
-import React, { useState, useMemo, useCallback } from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import {Routes, Route } from 'react-router-dom';
 
-// Our Compiler
+// --- Compiler Imports ---
 import { linkSchemas } from './compiler/linker';
 import { parseAdminPanelSchema } from './compiler/parser';
 import { UIGeneratorVisitor } from './compiler/visitor';
 
-// Import the individual service schemas
-import contentServiceSchema from './schemas/contentServiceSchema.json';
-import userServiceSchema from './schemas/userServiceSchema.json';
+// --- Runtime Imports ---
+import { AppRuntimeProvider } from './context/AppRuntimeContext';
+import { RenderEngine } from './runtime/RenderEngine';
+import { GlobalFormModal } from './runtime/ComponentLibrary';
 
-// Our Runtime
-import { AppRuntimeContext } from './context/AppRuntimeContext';
-import RenderEngine from './runtime/RenderEngine';
-import { FormModal, AppShell } from './runtime/ComponentLibrary';
 
-// A simple in-memory event emitter for data refresh notifications
-const createEventEmitter = () => {
-  const listeners = {};
-  return {
-    addListener: (event, callback) => {
-      if (!listeners[event]) listeners[event] = [];
-      listeners[event].push(callback);
-    },
-    removeListener: (event, callback) => {
-      if (listeners[event]) {
-        listeners[event] = listeners[event].filter(l => l !== callback);
-      }
-    },
-    trigger: (event) => {
-      if (listeners[event]) {
-        listeners[event].forEach(l => l());
-      }
-    },
-  };
-};
-
+/**
+ * The main App component. It orchestrates the entire application lifecycle.
+ */
 function App() {
-  // --- STATE MANAGEMENT ---
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [modalConfig, setModalConfig] = useState({ actionConfig: null, initialData: null, onFinished: null });
-  const eventEmitter = useMemo(() => createEventEmitter(), []);
+  // State to hold the final UI Intermediate Representation (IR)
+  const [uiIR, setUiIR] = useState(null);
+  // State to hold any fatal error that occurs during compilation
+  const [error, setError] = useState(null);
 
-  // --- COMPILATION ---
-  // useMemo ensures the entire compilation process runs only once.
-  const uiIR = useMemo(() => {
-    try {
-      // 1. COLLECT: Simulate fetching schemas from different services.
-      const collectedSchemas = [contentServiceSchema, userServiceSchema];
+  // This effect runs once on component mount to perform the "compilation"
+  useEffect(() => {
+    const compileApplication = async () => {
+      try {
+        // 1. Fetch the list of service schemas from our mock backend
+        const response = await fetch('http://localhost:3001/api/schemas');
+        if (!response.ok) {
+          throw new Error(`Failed to fetch schemas: ${response.statusText}`);
+        }
+        const serviceSchemas = await response.json();
+        console.log("✅ [Step 1/4] Fetched service schemas:", serviceSchemas);
 
-      // 2. LINK: Use the linker to create the single grand schema.
-      const grandSchema = linkSchemas(collectedSchemas);
-      
-      // 3. PARSE & VISIT: The rest of the pipeline proceeds as before.
-      const schemaString = JSON.stringify(grandSchema);
-      const astRoot = parseAdminPanelSchema(schemaString);
-      const visitor = new UIGeneratorVisitor();
-      return astRoot.accept(visitor);
-    } catch (e) {
-      console.error("COMPILATION FAILED:", e);
-      return { error: e.message }; // Return an error object if compilation fails
-    }
-  }, []);
+        // 2. Link schemas into one grand schema using our linker
+        const grandSchema = linkSchemas(serviceSchemas);
+        console.log("✅ [Step 2/4] Linked into grand schema:", grandSchema);
 
-  // --- RUNTIME SERVICES IMPLEMENTATION ---
-  const runtimeServices = {
-    apiCall: useCallback(async (method, endpoint, body) => {
-      console.log(`[API Call] ${method}: ${endpoint}`, body || '');
-      // MOCK API RESPONSE
-      await new Promise(resolve => setTimeout(resolve, 300)); // Simulate network latency
-      if (method === 'GET' && endpoint.includes('/api/v1/products/')) {
-        return { id: 'prod_1', name: 'Super Widget (Updated)', stock: 99 };
+        // 3. Parse the grand schema to generate the Abstract Syntax Tree (AST)
+        const ast = parseAdminPanelSchema(JSON.stringify(grandSchema));
+        console.log("✅ [Step 3/4] Generated AST:", ast);
+
+        // 4. Visit the AST to generate the UI Intermediate Representation (IR)
+        const visitor = new UIGeneratorVisitor();
+        const generatedIr = ast.accept(visitor);
+        console.log("✅ [Step 4/4] Generated UI IR:", generatedIr);
+        
+        setUiIR(generatedIr);
+
+      } catch (err) {
+        console.error("💥 COMPILATION FAILED:", err);
+        setError(err.message);
       }
-      console.log(`[API Success]`);
-      return { success: true };
-    }, []),
+    };
 
-    openFormModal: useCallback((actionConfig, initialData, onFinished) => {
-      setModalConfig({ actionConfig, initialData, onFinished });
-      setIsModalOpen(true);
-    }, []),
+    compileApplication();
+  }, []); // The empty dependency array [] ensures this effect runs only once.
 
-    closeModal: useCallback(() => {
-      setIsModalOpen(false);
-    }, []),
+  // --- Conditional Rendering based on Compilation State ---
 
-    addRefreshListener: useCallback((resourceId, callback) => {
-      eventEmitter.addListener(`refresh-${resourceId}`, callback);
-    }, [eventEmitter]),
-
-    removeRefreshListener: useCallback((resourceId, callback) => {
-      eventEmitter.removeListener(`refresh-${resourceId}`, callback);
-    }, [eventEmitter]),
-
-    triggerRefresh: useCallback((resourceId) => {
-      console.log(`Triggering refresh for resource: ${resourceId}`);
-      eventEmitter.trigger(`refresh-${resourceId}`);
-    }, [eventEmitter]),
-  };
-
-  // --- RENDER LOGIC ---
-
-  // Handle compilation errors gracefully
-  if (uiIR.error) {
+  if (error) {
     return (
-      <div className="error-display">
-        <h1>Failed to Build Admin Panel</h1>
-        <pre style={{ whiteSpace: 'pre-wrap', background: '#fee', padding: '1rem' }}>
-          {uiIR.error}
-        </pre>
+      <div style={{ padding: '2rem', color: '#d32f2f', background: '#ffebee', border: '1px solid #d32f2f' }}>
+        <h1>Application Failed to Load</h1>
+        <p>A fatal error occurred during the compilation phase:</p>
+        <pre>{error}</pre>
       </div>
     );
   }
 
-  // The main application render
+  if (!uiIR) {
+    return <div style={{ padding: '2rem', fontSize: '1.5rem' }}>Loading and Compiling UI...</div>;
+  }
+
+  // --- Successful Render ---
+  // If we have the UI IR, render the full application.
   return (
-    <AppRuntimeContext.Provider value={runtimeServices}>
+    <AppRuntimeProvider>
+      {/* The GlobalFormModal is placed here so it can overlay any page */}
+      <GlobalFormModal />
+
       <Routes>
-        <Route
-          path="/"
-          element={
-            <AppShell
-              title={uiIR.props.title}
-              navigation={uiIR.props.navigation}
-            />
-          }
-        >
-          {/* 
-            These are the child routes. They will be rendered inside the 
-            AppShell's <Outlet /> when their path matches.
-          */}
+        {/* 
+          This is a "Layout Route". 
+          1. It matches the base path "/".
+          2. It renders the AppShell via the RenderEngine.
+          3. All nested <Route> components will be rendered inside the AppShell's <Outlet />.
+        */}
+        <Route path="/" element={<RenderEngine ir={uiIR} />} >
+          
+          {/* The default page shown when visiting the root URL "/" */}
+          <Route index element={
+            <div style={{ textAlign: 'center', paddingTop: '4rem', color: '#666' }}>
+              <h2>Welcome to the Admin Panel</h2>
+              <p>Please select a resource from the navigation menu to begin.</p>
+            </div>
+          }/>
+
+          {/* Dynamically create a route for each resource page defined in the IR */}
           {uiIR.props.routes.map(route => (
-            <Route
+            <Route 
               key={route.path}
-              path={route.path}
-              element={<RenderEngine spec={route.element} />}
+              path={route.path} 
+              element={<RenderEngine ir={route.element} />} 
             />
           ))}
 
-          {/* 
-            The default redirect now uses the 'index' prop, which is the
-            correct way to specify a default child route.
-          */}
-          <Route
-            index
-            element={<Navigate to={uiIR.props.routes[0]?.path || '/'} replace />}
-          />
+          {/* A fallback route for any path not matched */}
+          <Route path="*" element={<h2>404: Page Not Found</h2>} />
+
         </Route>
       </Routes>
-
-      {/* The global modal remains outside the routing structure, which is correct. */}
-      <FormModal
-        isOpen={isModalOpen}
-        config={modalConfig.actionConfig}
-        initialData={modalConfig.initialData}
-        onFinished={modalConfig.onFinished}
-        onClose={runtimeServices.closeModal}
-      />
-    </AppRuntimeContext.Provider>
+    </AppRuntimeProvider>
   );
 }
 

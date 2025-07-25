@@ -32,28 +32,37 @@
       "type": "object",
       "properties": {
         "type": { "const": "resourceGroup" },
-        "id": { "type": "string", "description": "A unique identifier for the navigation group (e.g., 'lists')." },
-        "title": { "type": "string", "description": "The display title for the navigation group (e.g., 'LISTS')." },
-        "resources": {
+        "id": { "type": "string", "description": "A unique identifier for the navigation group." },
+        "title": { "type": "string", "description": "The display title for the navigation group." },
+        "display": { "enum": ["section", "folder"], "default": "section", "description": "How to visually represent this group. 'section' is a top-level group, 'folder' is a nested item." },
+        "items": {
           "type": "array",
-          "items": { "$ref": "#/definitions/resource" }
+          "description": "The contents of this group, which can be other groups or resources.",
+          "items": {
+            "oneOf": [
+              { "$ref": "#/definitions/resource" },
+              { "$ref": "#/definitions/resourceGroup" }
+            ]
+          }
         }
       },
-      "required": ["type", "id", "title", "resources"]
+      "required": ["type", "id", "title", "items"],
+      "additionalProperties": false
     },
 
     "userMenu": {
       "type": "object",
       "properties": {
         "type": { "const": "userMenu" },
-        "id": { "const": "user", "description": "The fixed identifier for the user menu." },
-        "title": { "type": "string", "description": "The display title for the user menu (e.g., 'USER')." },
+        "id": { "const": "user" },
+        "title": { "type": "string" },
         "items": {
           "type": "array",
           "items": { "$ref": "#/definitions/userMenuItem" }
         }
       },
-      "required": ["type", "id", "title", "items"]
+      "required": ["type", "id", "title", "items"],
+      "additionalProperties": false
     },
     
     "userMenuItem": {
@@ -68,9 +77,10 @@
       "type": "object",
       "description": "Defines a data resource like 'Products' or 'Users' that can be managed via CRUD.",
       "properties": {
-        "id": { "type": "string", "description": "Unique identifier, used for routing (e.g., 'products')." },
-        "name": { "type": "string", "description": "Human-readable display name (e.g., 'Products')." },
-        "endpoint": { "type": "string", "description": "Base API endpoint for this resource." },
+        "type": { "const": "resource" },
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "endpoint": { "type": "string"},
         "views": {
           "type": "object",
           "properties": {
@@ -84,7 +94,8 @@
           "items": { "$ref": "#/definitions/action" }
         }
       },
-      "required": ["id", "name", "endpoint", "views", "actions"]
+      "required": ["type", "id", "name", "endpoint", "views", "actions"],
+      "additionalProperties": false
     },
 
     "view-table": {
