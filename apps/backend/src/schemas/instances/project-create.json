@@ -1,1 +1,0 @@
-{ "type": "form", "title": "Create Project", "properties": { "name": { "type": "string", "title": "Project Name" } }, "required": ["name"] }

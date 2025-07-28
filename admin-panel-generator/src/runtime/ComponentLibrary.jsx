@@ -13,6 +13,9 @@ import { effectLibrary } from './effectLibrary';
 
 export const componentMap = {};
 
+// --- THIS IS THE KEY ---
+const API_HOST = import.meta.env.VITE_API_HOST || 'http://localhost:4000';
+
 // --- Helper Components ---
 
 const Icon = ({ name }) => {
@@ -26,6 +29,18 @@ const Icon = ({ name }) => {
 const StatusPill = ({ status }) => {
     const statusClass = String(status).toLowerCase().replace(' ', '-');
     return <span className={`status-pill status-${statusClass}`}>{status}</span>
+};
+
+const PassThruObjectFieldTemplate = (props) => {
+  return (
+    <div>
+      {props.properties.map(element => (
+        <div key={element.content.key} className="form-property">
+          {element.content}
+        </div>
+      ))}
+    </div>
+  );
 };
 
 // --- RJSF Custom Templates ---
@@ -165,8 +180,7 @@ export const FormButton = ({ text, actionConfig, itemData }) => {
     controls.start("jiggle");
   };
   return (
-    <Animated tag="button" effect={["buttonPress", "clickJiggle"]} className="btn btn-primary"
-      onClick={handleClick} animate={controls}>
+    <Animated tag="button" effect={["buttonPress", "clickJiggle"]} className="btn btn-primary" onClick={handleClick} animate={controls}>
       <FiPlus /> {text}
     </Animated>
   );
@@ -188,13 +202,13 @@ export const ActionButton = ({ text, actionConfig, itemData }) => {
     }
   };
   return (
-    <Animated tag="button" effect={["buttonPress", "clickJiggle"]} className="btn"
-      onClick={handleClick} animate={controls}>
+    <Animated tag="button" effect={["buttonPress", "clickJiggle"]} className="btn" onClick={handleClick} animate={controls}>
       {text}
     </Animated>
   );
 };
 componentMap.ActionButton = ActionButton;
+
 
 export const DataTable = ({ columns, resourceEndpoint, itemActions }) => {
   const [data, setData] = useState([]);
@@ -202,7 +216,7 @@ export const DataTable = ({ columns, resourceEndpoint, itemActions }) => {
 
   useEffect(() => {
     setData([]);
-    fetch(`http://localhost:3001${resourceEndpoint}`)
+    fetch(`${API_HOST}${resourceEndpoint}`)
       .then(res => res.json())
       .then(setData);
   }, [resourceEndpoint, dataVersion]);
@@ -238,43 +252,39 @@ export const DataTable = ({ columns, resourceEndpoint, itemActions }) => {
 componentMap.DataTable = DataTable;
 
 const ModalForm = ({ config, initialData, onClose }) => {
-  const { actionService } = useAppRuntime(); // Use new context structure
-  const handleSubmit = async ({ formData }) => {
-    // Await the result to know if the form should close
-    const success = await actionService.execute(config, initialData, formData); // Use new context structure
-    // The execute action now closes the modal on success automatically.
+  const { actionService } = useAppRuntime();
+  const handleSubmit = ({ formData }) => {
+    actionService.execute(config, initialData, formData);
   };
-  
+
   let formData = initialData;
   if (initialData && config.dataMapTransform) {
-      try {
-          formData = jsonata(config.dataMapTransform).evaluate(initialData);
-      } catch(e) { console.error("JSONata error:", e); }
+      try { formData = jsonata(config.dataMapTransform).evaluate(initialData); }
+      catch(e) { console.error("JSONata error:", e); }
   }
 
+  // The <Animated> wrapper has been removed from here.
   return (
-    <Animated effect="cascadeIn">
-      <Form
-          schema={config.formSchema.schema}
-          uiSchema={config.formSchema.uiSchema || {}}
-          formData={formData}
-          validator={validator}
-          onSubmit={handleSubmit}
-          templates={{ FieldTemplate: AnimatedFieldTemplate }}
-          showErrorList={false} 
-      >
-        <div className="modal-actions">
-            <Animated tag="button" effect="buttonPress" type="button" className="btn" onClick={onClose}>Cancel</Animated>
-            <Animated tag="button" effect="buttonPress" type="submit" className="btn btn-primary">Submit</Animated>
-        </div>
-      </Form>
-    </Animated>
+    <Form
+      schema={config.formSchema.schema}
+      uiSchema={config.formSchema.uiSchema || {}}
+      formData={formData}
+      validator={validator}
+      onSubmit={handleSubmit}
+      templates={{ FieldTemplate: AnimatedFieldTemplate, ObjectFieldTemplate: PassThruObjectFieldTemplate }}
+      showErrorList={false}
+    >
+      <div className="modal-actions">
+          <Animated tag="button" effect="buttonPress" type="button" className="btn" onClick={onClose}>Cancel</Animated>
+          <Animated tag="button" effect="buttonPress" type="submit" className="btn btn-primary">Submit</Animated>
+      </div>
+    </Form>
   );
 }
 
 export const GlobalFormModal = () => {
-  const { modalService } = useAppRuntime(); // Use new context structure
-  const { isOpen, config, initialData } = modalService.state;
+  const { modalState, modalService } = useAppRuntime(); 
+  const { isOpen, config, initialData } = modalState;
 
   if (!isOpen) return null;
 
@@ -282,7 +292,7 @@ export const GlobalFormModal = () => {
     <Animated tag="div" effect="modalBackdrop" className="modal-backdrop">
       <Animated tag="div" effect="modalContent" className="modal-content" key="form-modal">
         <h3 className="modal-header">{config.formSchema.schema.title || config.name}</h3>
-        <ModalForm config={config} initialData={initialData} onClose={modalService.close}/>
+        <ModalForm config={config} initialData={initialData} onClose={modalService.close}/> 
       </Animated>
     </Animated>
   );
@@ -295,7 +305,7 @@ export const DetailView = ({ fields, resourceEndpoint, resourceName }) => {
 
   useEffect(() => {
     setLoading(true);
-    fetch(`http://localhost:3001${resourceEndpoint}/${itemId}`)
+    fetch(`${API_HOST}${resourceEndpoint}/${itemId}`)
       .then(res => res.json())
       .then(data => {
         setItem(data);

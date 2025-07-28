@@ -1,0 +1,32 @@
+{
+  "type": "resourceGroup",
+  "display": "section",
+  "id": "users-group",
+  "title": "User Management",
+  "items": [
+    {
+      "type": "resource",
+      "id": "users",
+      "name": "All Users",
+      "icon": "users",
+      "endpoint": "/users",
+      "views": { "listView": { "columns": [
+        { "field": "id", "header": "ID" },
+        { "field": "name", "header": "Name" },
+        { "field": "email", "header": "Email" },
+        { "field": "status", "header": "Status" }
+      ]}},
+      "actions": [
+        {
+          "//": "This is a custom action that does not proxy directly",
+          "type": "simpleAction",
+          "id": "get-report",
+          "name": "Get Activity Report",
+          "target": "global",
+          "method": "GET",
+          "endpoint": "/users/activity-report"
+        }
+      ]
+    }
+  ]
+}
