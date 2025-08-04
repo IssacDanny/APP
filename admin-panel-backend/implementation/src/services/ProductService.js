@@ -1,11 +1,14 @@
 import { HttpError } from '#platform/core/errors.js';
 
 export default class ProductService {
-  async generateInventoryReport(req, res, next) {
-    // The context is no longer passed from the interpreter,
-    // but the user is attached to `req` by the pre-handler.
+  /**
+   * Generates a custom inventory report.
+   * IT NOW RETURNS A RESULT OBJECT.
+   * @param {import('express').Request} req
+   * @param {import('express').Response} res - We receive it but will not use it.
+   */
+  async generateInventoryReport(req, res) {
     if (!req.user) {
-      // Throw an error to be caught by the global handler.
       throw new HttpError('Authentication required.', 401);
     }
 
@@ -18,7 +21,15 @@ export default class ProductService {
       ],
     };
 
-    // The service is now responsible for sending the response again.
-    res.status(200).json(reportData);
+    // The service returns its result and any payloads for interceptors.
+    return {
+      status: 200,
+      response: reportData,
+      payloads: {
+        audit: {
+          message: `User ${req.user.email} generated the inventory report.`,
+        },
+      },
+    };
   }
 }

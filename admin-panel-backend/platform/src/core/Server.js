@@ -7,10 +7,10 @@ const PORT = process.env.PORT || 4000;
 /**
  * The main startup function for the entire application.
  */
-export async function startServer() {
+export async function startServer(testOverrides) {
   try {
     // 1. Configure the IoC container
-    const container = await configureContainer();
+    const container = await configureContainer(testOverrides);
 
     // 2. Create the base Express app
     const app = createApp();
