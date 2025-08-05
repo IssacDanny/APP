@@ -48,9 +48,15 @@ export class BlueprintInterpreter {
   }
 
   async _processBlueprint(filePath) {
-    const { default: blueprint } = await import(pathToFileURL(filePath).href);
-    this.aggregatedSchemas.push({ ...blueprint.uiSchema, resourcePrefix: blueprint.resource.prefix });
-    const router = express.Router();
+    console.log(`\nInterpreting blueprint: ${path.basename(filePath)}`);
+    const fileUrl = pathToFileURL(filePath).href;
+    const { default: blueprint } = await import(fileUrl);
+    this.aggregatedSchemas.push({
+      ...blueprint.uiSchema,
+      resourcePrefix: blueprint.resource.prefix,
+    });
+    console.log(`  - Registered UI Schema for resource: ${blueprint.resource.name}`);
+    const router = express.Router({ strict: false });
 
     for (const route of blueprint.routes) {
       const requestLifecycleHandler = this._createRequestLifecycleHandler(route);

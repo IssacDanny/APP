@@ -45,7 +45,7 @@ export default {
       path: '/',
       method: 'GET',
       handler: 'configurationAdapter.getAll',
-      interceptors: [{ name: 'rbac', options: { allowedRoles: ['admin'] } }],
+      interceptors: ['monitoring', { name: 'rbac', options: { allowedRoles: ['admin'] } }],
     },
     {
       path: '/',
