@@ -98,23 +98,65 @@ export class BlueprintInterpreter {
   }
 
   /**
-   * Creates the main business logic handler function.
+   * Creates the main business logic handler, now with transformation capabilities.
    */
   _createMainHandler(route) {
+    const { transform } = route;
+
+    // Resolve transformers from the container if they are defined
+    let requestTransformer = null;
+    let responseTransformer = null;
+    if (transform) {
+        if (transform.request) {
+            const [name, method] = transform.request.split('.');
+            requestTransformer = this.container.resolve(name)[method];
+        }
+        if (transform.response) {
+            const [name, method] = transform.response.split('.');
+            responseTransformer = this.container.resolve(name)[method];
+        }
+    }
+
     if (route.handler === 'proxy') {
       const proxyService = this.container.resolve('proxyService');
-      return (req, res) => {
+      return async (req) => { // Removed 'res' as it's not used here
         const finalDownstreamPath = route.downstreamPath.replace(/:(\w+)/g, (match, paramName) => req.params[paramName] || match);
-        return proxyService.forwardRequest({
+        
+        // --- 1. APPLY REQUEST TRANSFORM ---
+        const originalBody = req.body;
+        if (requestTransformer) {
+            req.body = requestTransformer(originalBody);
+        }
+
+        const result = await proxyService.forwardRequest({
           req,
           targetServiceUrl: route.targetServiceUrl,
           downstreamPath: finalDownstreamPath,
         });
+
+        // Restore original body in case other async processes need it
+        req.body = originalBody;
+
+        // --- 2. APPLY RESPONSE TRANSFORM ---
+        if (responseTransformer && result.data) {
+            result.data = responseTransformer(result.data);
+        }
+
+        return result;
       };
     } else {
+      // Logic for custom service handlers
       const [serviceName, methodName] = route.handler.split('.');
       const service = this.container.resolve(serviceName);
-      return (req, res) => service[methodName](req, res);
+      return (req) => {
+          let requestData = req.body;
+          // Apply request transform before it even hits the service
+          if (requestTransformer) {
+              requestData = requestTransformer(req.body);
+          }
+          // Custom services receive the request, not res
+          return service[methodName](req, requestData);
+      };
     }
   }
 

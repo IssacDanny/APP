@@ -22,11 +22,12 @@ export async function configureContainer(testOverrides) {
   
   // --- STEP 2: LOAD ALL OTHER MODULES ---
   const rootDir = process.cwd();
-  const modulePathPatterns = [
+   const modulePathPatterns = [
     path.join(rootDir, 'platform/src/services/**/*.js'),
     path.join(rootDir, 'platform/src/interceptors/**/*.js'),
     path.join(rootDir, 'implementation/src/services/**/*.js'),
     path.join(rootDir, 'implementation/src/interceptors/**/*.js'),
+    path.join(rootDir, 'implementation/src/transformers/**/*.js'),
   ];
   
   const posixModulePaths = modulePathPatterns.map(p => p.replace(/\\/g, '/'));
@@ -46,16 +47,29 @@ export async function configureContainer(testOverrides) {
     const fileUrl = pathToFileURL(filePath).href;
     try {
       const module = await import(fileUrl);
-      const classToRegister = module.default;
+      const toRegister = module.default;
 
-      if (classToRegister && typeof classToRegister === 'function') {
+      // If the export is missing or not a class/object, skip it.
+      if (!toRegister) {
+          continue;
+      }
+      
+      // --- THE FIX ---
+      // Check if the default export is a class (constructor) or a plain value (object).
+      const isClass = typeof toRegister === 'function' && /^\s*class\s+/.test(toRegister.toString());
+
+      if (isClass) {
+        // It's a class, use asClass
         container.register({
-          [registrationName]: asClass(classToRegister, { lifetime: Lifetime.SINGLETON }),
+          [registrationName]: asClass(toRegister, { lifetime: Lifetime.SINGLETON }),
         });
       } else {
-        // This warning is helpful, but we can remove it for cleaner logs if desired.
-        // console.warn(`[WARN] File at ${filePath} does not have a default export. Skipping.`);
+        // It's a plain object (like our transformer), use asValue
+        container.register({
+          [registrationName]: asValue(toRegister),
+        });
       }
+      console.log(`[DEBUG] Registered '${registrationName}' from ${path.basename(filePath)}`);
 
     } catch (error) {
       console.error(`[ERROR] Failed to load or register module at ${filePath}`, error);
