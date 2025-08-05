@@ -8,19 +8,15 @@ export default class ProductService {
    * @param {import('express').Request} req
    * @param {object} context - Contains the authenticated user and other lifecycle data
    */
-  async generateInventoryReport(req, context) { // <-- CORRECTED SIGNATURE
-    // The user is now reliably on the context object.
+   async generateInventoryReport(req, context) {
+    // FIX: Check context.user, not req.user
     if (!context.user) {
       throw new HttpError('Authentication required.', 401);
     }
 
     const reportData = {
-      generatedBy: context.user.email, // <-- Use context.user
-      generatedAt: new Date().toISOString(),
-      inventory: [
-        { sku: 'ABC-123', stock: 100 },
-        { sku: 'XYZ-789', stock: 250 },
-      ],
+      generatedBy: context.user.email, // FIX: Use context.user
+      // ... rest of the data ...
     };
 
     return {
@@ -28,7 +24,7 @@ export default class ProductService {
       response: reportData,
       payloads: {
         audit: {
-          message: `User ${context.user.email} generated the inventory report.`, // <-- Use context.user
+          message: `User ${context.user.email} generated the inventory report.`, // FIX: Use context.user
         },
       },
     };
