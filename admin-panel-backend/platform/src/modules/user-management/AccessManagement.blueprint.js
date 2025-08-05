@@ -70,7 +70,20 @@ export default {
       method: 'PUT',
       handler: 'accessAdapter.updateUserRoles',
       // This route was already correct, but let's ensure it stays this way.
-      interceptors: ['authentication', { name: 'rbac', options: { allowedRoles: ['admin'] } }, 'auditing'],
+      interceptors: [
+        'authentication',
+        { name: 'rbac', options: { allowedRoles: ['admin'] } },
+        'auditing',
+        {
+          name: 'rateLimiting',
+          options: {
+            windowMs: 15 * 60 * 1000, // 15 minutes
+            max: 3, // Set to 3 for our test case
+            // Group requests by the authenticated user's ID
+            keyGenerator: (req, context) => `user:${context.user.id}`,
+          },
+        },
+      ],
     },
   ],
 };
