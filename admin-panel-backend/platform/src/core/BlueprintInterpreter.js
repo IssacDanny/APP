@@ -12,14 +12,39 @@ export class BlueprintInterpreter {
   }
 
   async interpretAndBuild() {
+    console.log('--- Blueprint Interpreter: Starting ---');
     const rootDir = process.cwd();
-    const blueprintPathPattern = path.join(rootDir, 'implementation/src/blueprints/**/*.blueprint.js').replace(/\\/g, '/');
-    const blueprintFiles = await glob(blueprintPathPattern);
+
+    // --- FIX: Define paths for both platform and implementation blueprints ---
+    const platformBlueprintPath = path.join(rootDir, 'platform/src/modules/**/*.blueprint.js').replace(/\\/g, '/');
+    const implementationBlueprintPath = path.join(rootDir, 'implementation/src/blueprints/**/*.blueprint.js').replace(/\\/g, '/');
+
+    // --- FIX: Use glob to find all files from both locations and combine them ---
+    const platformFiles = await glob(platformBlueprintPath);
+    const implementationFiles = await glob(implementationBlueprintPath);
+    const blueprintFiles = [...platformFiles, ...implementationFiles];
+
+    if (blueprintFiles.length === 0) {
+      console.warn('[WARN] No blueprints found to interpret.');
+      this._registerSchemaEndpoint(); // Still register the endpoint even if empty
+      return;
+    }
+
+    console.log(`Found ${blueprintFiles.length} blueprint(s) to interpret:`, blueprintFiles);
 
     for (const file of blueprintFiles) {
-      await this._processBlueprint(file);
+      // Add a try-catch block here for more robust error handling
+      try {
+        await this._processBlueprint(file);
+      } catch (error) {
+        console.error(`[FATAL] Failed to process blueprint: ${file}`, error);
+        // Depending on desired behavior, you might want to stop the server
+        // process.exit(1); 
+      }
     }
+
     this._registerSchemaEndpoint();
+    console.log('--- Blueprint Interpreter: Finished ---');
   }
 
   async _processBlueprint(filePath) {
@@ -35,97 +60,99 @@ export class BlueprintInterpreter {
   }
 
   /**
-   * Creates a single Express handler that manages the entire request lifecycle.
-   */
+    * Creates a single Express handler that manages the entire request lifecycle.
+  */
   _createRequestLifecycleHandler(route) {
-    const interceptors = (route.interceptors || []).map(name => this.container.resolve(name));
+    const interceptorConfigs = route.interceptors || [];
+    
+    const interceptors = interceptorConfigs.map(config => {
+      if (typeof config === 'string') {
+        return { instance: this.container.resolve(config), options: {} };
+      } else if (typeof config === 'object' && config.name) {
+        return { instance: this.container.resolve(config.name), options: config.options || {} };
+      }
+      throw new Error(`Invalid interceptor configuration in route ${route.path}: ${JSON.stringify(config)}`);
+    });
+
     const mainHandler = this._createMainHandler(route);
 
     return async (req, res, next) => {
-      // 1. Create the single context object for the entire request lifecycle.
       const context = { req, res, user: null, payloads: {}, result: null, error: null };
 
-      // 2. Attach the post-handle logic immediately.
-      // This listener will wait patiently until the response is finished or errors out.
       onFinished(res, async (err) => {
-        context.error = err; // Capture stream errors if any
-        for (const interceptor of interceptors.slice().reverse()) {
-          if (interceptor.postHandle) {
+        context.error = err;
+        for (const { instance, options } of interceptors.slice().reverse()) {
+          if (instance.postHandle) {
             try {
-              await interceptor.postHandle(context);
+              await instance.postHandle(context, options);
             } catch (postErr) {
-              console.error(`[ERROR] Non-blocking error in postHandle for '${interceptor.constructor.name}':`, postErr);
+              console.error(`[ERROR] Non-blocking error in postHandle for '${instance.constructor.name}':`, postErr);
             }
           }
         }
       });
 
-      // 3. Proceed with the main request logic inside a try...catch block.
       try {
-        // --- PRE-HANDLE ---
-        for (const interceptor of interceptors) {
-          if (interceptor.preHandle) {
-            await interceptor.preHandle(context);
-            req.user = context.user; // Persist user from auth interceptor
+        for (const { instance, options } of interceptors) {
+          if (instance.preHandle) {
+            await instance.preHandle(context, options);
           }
         }
 
-        // --- MAIN LOGIC ---
-        const result = await mainHandler(req, res);
+        const result = await mainHandler(context);
         
-        // --- POPULATE CONTEXT ---
         if (route.handler === 'proxy') {
-            context.result = result;
+          context.result = result;
         } else {
-            // This is a custom service result
-            if (result.payloads) Object.assign(context.payloads, result.payloads);
-            context.result = {
-                status: result.status || 200,
-                data: result.response,
-            };
+          if (result && result.payloads) Object.assign(context.payloads, result.payloads);
+          context.result = {
+            status: result ? (result.status || 200) : 204,
+            data: result ? result.response : null,
+          };
         }
         
-        // --- SEND RESPONSE ---
-        // This is the action that will eventually trigger the on-finished listener.
-        res.status(context.result.status).json(context.result.data);
+        if (context.result.status === 204) {
+            res.status(204).end();
+        } else {
+            res.status(context.result.status).json(context.result.data);
+        }
 
       } catch (err) {
-        // If anything in pre-handle or main logic fails, pass to global handler.
         context.error = err;
         next(err);
       }
     };
   }
 
-  /**
-   * Creates the main business logic handler, now with transformation capabilities.
+    /**
+   * Creates the main business logic handler function.
+   * This handler receives the `context` object from the lifecycle manager.
    */
   _createMainHandler(route) {
     const { transform } = route;
-
-    // Resolve transformers from the container if they are defined
     let requestTransformer = null;
     let responseTransformer = null;
+
     if (transform) {
-        if (transform.request) {
-            const [name, method] = transform.request.split('.');
-            requestTransformer = this.container.resolve(name)[method];
-        }
-        if (transform.response) {
-            const [name, method] = transform.response.split('.');
-            responseTransformer = this.container.resolve(name)[method];
-        }
+      if (transform.request) {
+        const [name, method] = transform.request.split('.');
+        requestTransformer = this.container.resolve(name)[method];
+      }
+      if (transform.response) {
+        const [name, method] = transform.response.split('.');
+        responseTransformer = this.container.resolve(name)[method];
+      }
     }
 
     if (route.handler === 'proxy') {
       const proxyService = this.container.resolve('proxyService');
-      return async (req) => { // Removed 'res' as it's not used here
+      return async (context) => {
+        const { req } = context;
         const finalDownstreamPath = route.downstreamPath.replace(/:(\w+)/g, (match, paramName) => req.params[paramName] || match);
         
-        // --- 1. APPLY REQUEST TRANSFORM ---
         const originalBody = req.body;
         if (requestTransformer) {
-            req.body = requestTransformer(originalBody);
+          req.body = requestTransformer(originalBody);
         }
 
         const result = await proxyService.forwardRequest({
@@ -133,29 +160,26 @@ export class BlueprintInterpreter {
           targetServiceUrl: route.targetServiceUrl,
           downstreamPath: finalDownstreamPath,
         });
-
-        // Restore original body in case other async processes need it
+        
         req.body = originalBody;
 
-        // --- 2. APPLY RESPONSE TRANSFORM ---
         if (responseTransformer && result.data) {
-            result.data = responseTransformer(result.data);
+          result.data = responseTransformer(result.data);
         }
-
         return result;
       };
     } else {
-      // Logic for custom service handlers
       const [serviceName, methodName] = route.handler.split('.');
       const service = this.container.resolve(serviceName);
-      return (req) => {
-          let requestData = req.body;
-          // Apply request transform before it even hits the service
-          if (requestTransformer) {
-              requestData = requestTransformer(req.body);
-          }
-          // Custom services receive the request, not res
-          return service[methodName](req, requestData);
+      
+      return (context) => {
+        const { req } = context;
+        let requestData = req.body;
+        if (requestTransformer) {
+          requestData = requestTransformer(req.body);
+        }
+        // Pass the full context to the service method, which is what it expects.
+        return service[methodName](req, context);
       };
     }
   }

@@ -28,6 +28,7 @@ export async function configureContainer(testOverrides) {
     path.join(rootDir, 'implementation/src/services/**/*.js'),
     path.join(rootDir, 'implementation/src/interceptors/**/*.js'),
     path.join(rootDir, 'implementation/src/transformers/**/*.js'),
+    path.join(rootDir, 'platform/src/modules/**/*.js'),
   ];
   
   const posixModulePaths = modulePathPatterns.map(p => p.replace(/\\/g, '/'));

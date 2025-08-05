@@ -1,19 +1,21 @@
+// implementation/src/services/ProductService.js
 import { HttpError } from '#platform/core/errors.js';
 
 export default class ProductService {
   /**
    * Generates a custom inventory report.
-   * IT NOW RETURNS A RESULT OBJECT.
+   * It now receives the full context object from the lifecycle handler.
    * @param {import('express').Request} req
-   * @param {import('express').Response} res - We receive it but will not use it.
+   * @param {object} context - Contains the authenticated user and other lifecycle data
    */
-  async generateInventoryReport(req, res) {
-    if (!req.user) {
+  async generateInventoryReport(req, context) { // <-- CORRECTED SIGNATURE
+    // The user is now reliably on the context object.
+    if (!context.user) {
       throw new HttpError('Authentication required.', 401);
     }
 
     const reportData = {
-      generatedBy: req.user.email,
+      generatedBy: context.user.email, // <-- Use context.user
       generatedAt: new Date().toISOString(),
       inventory: [
         { sku: 'ABC-123', stock: 100 },
@@ -21,13 +23,12 @@ export default class ProductService {
       ],
     };
 
-    // The service returns its result and any payloads for interceptors.
     return {
       status: 200,
       response: reportData,
       payloads: {
         audit: {
-          message: `User ${req.user.email} generated the inventory report.`,
+          message: `User ${context.user.email} generated the inventory report.`, // <-- Use context.user
         },
       },
     };
