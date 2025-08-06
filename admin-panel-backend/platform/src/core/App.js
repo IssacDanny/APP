@@ -1,6 +1,9 @@
 import express from 'express';
 import cors from 'cors';
+import helmet from 'helmet';
 import { ProxyError, HttpError } from './errors.js';
+import { httpLogger } from './logger.js';
+import { config } from './config/index.js';
 
 /**
  * Creates and configures the base Express application.
@@ -10,6 +13,20 @@ export function createApp() {
   const app = express();
 
   // --- Core Middleware ---
+  app.use(
+    helmet({
+      // Configure Content Security Policy (CSP)
+      contentSecurityPolicy: {
+        directives: {
+          defaultSrc: ["'self'"], // Only allow scripts, styles, etc., from our own domain by default
+          // In development, we need to allow connections for Vite's Hot Module Replacement (HMR)
+          // You might need to adjust the port if your frontend runs on a different one.
+          connectSrc: config.NODE_ENV === 'development' ? ["'self'", "ws://localhost:5173"] : ["'self'"],
+        },
+      },
+    })
+  );
+  app.use(httpLogger);
   app.use(cors());       // Enable Cross-Origin Resource Sharing
   app.use(express.json()); // Enable JSON body parsing
 

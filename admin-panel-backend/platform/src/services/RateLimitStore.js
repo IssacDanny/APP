@@ -1,5 +1,6 @@
 import { createClient } from 'redis';
 import { HttpError } from '../core/errors.js';
+import { config } from '../core/config/index.js';
 
 /**
  * A service that uses Redis to provide rate-limiting functionality.
@@ -7,9 +8,15 @@ import { HttpError } from '../core/errors.js';
  */
 export default class RateLimitStore {
   constructor() {
+    if (!config.REDIS_URL) {
+      // Fail gracefully if Redis is not configured, as it's an optional service.
+      console.warn('[RateLimitStore] REDIS_URL not configured. Rate limiting will be disabled.');
+      this.redisClient = null;
+      return;
+    }
+
     this.redisClient = createClient({
-      // The developer would configure the URL via environment variables.
-      // url: process.env.REDIS_URL || 'redis://localhost:6379'
+      url: config.REDIS_URL,
     });
 
     this.redisClient.on('error', (err) => console.error('[Redis] Client Error', err));
@@ -26,6 +33,10 @@ export default class RateLimitStore {
    * @throws {HttpError} If the rate limit is exceeded.
    */
   async checkAndIncrement(key, windowMs, max) {
+    if (!this.redisClient) {
+      return;
+    }
+    
     const windowSec = Math.ceil(windowMs / 1000);
 
     try {
@@ -45,6 +56,21 @@ export default class RateLimitStore {
       } else {
           // Re-throw the HttpError if the limit was exceeded
           throw err;
+      }
+    }
+  }
+
+  /**
+   * Gracefully disconnects the Redis client.
+   * This will be called by the server during shutdown.
+   */
+  async close() {
+    if (this.redisClient && this.redisClient.isOpen) {
+      try {
+        await this.redisClient.quit();
+        console.log('[RateLimitStore] Redis client disconnected gracefully.');
+      } catch (err) {
+        console.error('[RateLimitStore] Error during Redis disconnection:', err);
       }
     }
   }

@@ -8,17 +8,20 @@ export default class AccessAdapter {
     this.service = accessManagementService;
   }
 
-  // FIX: Accept the context object
-  async getUsers(req, context) {
-    // The service method itself might need the context (e.g., to get a tenantId)
+  // This method is now only used for the UI, so it passes context.
+  async getUsers(context) {
     const users = await this.service.getUsers(context);
     return { response: users };
   }
 
-  // FIX: Accept the context object
-  async updateUserRoles(req, context) {
+  // This is the method causing the error. Let's fix its call signature.
+  async updateUserRoles(context) {
+    const { req } = context;
     const { id } = req.params;
     const { roles } = req.body;
+    
+    // The service layer should deal with business logic, not parsing the request.
+    // The adapter's job is to extract the details from the request and pass them cleanly.
     const updatedUser = await this.service.updateUserRoles(id, roles, context);
     
     return {

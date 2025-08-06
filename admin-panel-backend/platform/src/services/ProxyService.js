@@ -1,10 +1,14 @@
 import fetch from 'node-fetch';
 import { ProxyError } from '../core/errors.js';
-
+export const registration = { type: 'class' }; 
 /**
  * A service responsible for forwarding requests to downstream services.
  */
 export default class ProxyService {
+  constructor({ logger }) {
+    this.logger = logger;
+  }
+
   /**
    * Forwards an incoming Express request to a target service URL.
    *
@@ -19,8 +23,8 @@ export default class ProxyService {
     // Construct the URL correctly now using the provided path
     const targetUrl = `${targetServiceUrl}${downstreamPath}`; // <-- FIX 2: Use downstreamPath, NOT originalUrl
 
-    console.log(`[PROXY-DEBUG] Attempting to fetch final URL: ${targetUrl}`);
-    console.log(`[PROXY] --> ${method} ${targetUrl}`);
+    this.logger.info(`[PROXY-DEBUG] Attempting to fetch final URL: ${targetUrl}`);
+    this.logger.info(`[PROXY] --> ${method} ${targetUrl}`);
 
     const headersToForward = this._prepareHeaders(headers);
 
@@ -38,14 +42,14 @@ export default class ProxyService {
         throw new ProxyError(errorMessage, response.status, responseData);
       }
 
-      console.log(`[PROXY] <-- ${response.status} ${method} ${targetUrl}`);
+      this.logger.info(`[PROXY] <-- ${response.status} ${method} ${targetUrl}`);
       return { status: response.status, data: responseData };
 
     } catch (error) {
       if (error instanceof ProxyError) {
         throw error;
       }
-      console.error(`[PROXY] <-- FAILED ${method} ${targetUrl}`, error);
+      this.logger.error(`[PROXY] <-- FAILED ${method} ${targetUrl}`, error);
       throw new ProxyError(`The target service is unreachable at ${targetServiceUrl}`, 503);
     }
   }

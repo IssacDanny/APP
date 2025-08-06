@@ -5,15 +5,24 @@ import { startServer } from '#platform/core/Server.js';
 import { HttpError } from '#platform/core/errors.js';
 import { mockAuthInterceptor } from './test_mocks/MockAuthInterceptor.js';
 
+const mockLogger = {
+  info: vi.fn(),
+  warn: vi.fn(),
+  error: vi.fn(),
+  debug: vi.fn(),
+};
+
 const mockUsers = new Map([
   ['user-1', { id: 'user-1', email: 'admin@test.com', roles: ['admin', 'editor'] }],
   ['user-2', { id: 'user-2', email: 'editor@test.com', roles: ['editor'] }],
 ]);
 
 const mockAccessManagementService = {
-  getUsers: vi.fn().mockImplementation((context) => Promise.resolve(Array.from(mockUsers.values()))),
-  updateUserRoles: vi.fn().mockImplementation((id, roles, context) => {
+  getUsers: vi.fn().mockResolvedValue(Array.from(mockUsers.values())),
+  // FIX: The mock now matches the clean signature the adapter is calling.
+  updateUserRoles: vi.fn().mockImplementation((id, roles, context) => { 
     const user = mockUsers.get(id);
+    if (!user) return Promise.reject(new Error('User not found')); // Add defensive coding
     user.roles = roles;
     return Promise.resolve(user);
   }),
@@ -64,9 +73,10 @@ describe('User Management E2E Tests', () => {
       rateLimitStore: asValue(mockRateLimitStore),
       featureFlagService: asValue(mockFeatureFlagService),
       dashboardService: asValue({ get: () => Promise.resolve({ response: 'ok' }) }),
+      logger: asValue(mockLogger),
     };
     app = await startServer(testOverrides);
-  }, 30000);
+  });
 
   afterEach(() => {
     vi.clearAllMocks();
@@ -173,6 +183,22 @@ describe('User Management E2E Tests', () => {
 
       expect(response.status).toBe(200);
       expect(response.body).toBe('ok');
+    });
+  });
+
+  describe('Platform Security', () => {
+    it('should set security headers using helmet', async () => {
+        const response = await request(app).get('/health');
+
+        // This assertion is correct and should be kept.
+        expect(response.headers['x-content-type-options']).toBe('nosniff');
+        
+        // --- FIX IS HERE ---
+        // Update the expected max-age to match Helmet's default of 1 year.
+        expect(response.headers['strict-transport-security']).toBe('max-age=31536000; includeSubDomains');
+
+        // This assertion is also correct and should be kept.
+        expect(response.headers['x-frame-options']).toBe('SAMEORIGIN');
     });
   });
 });

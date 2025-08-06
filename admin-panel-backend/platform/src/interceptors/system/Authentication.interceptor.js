@@ -1,36 +1,58 @@
+import jwt from 'jsonwebtoken';
+import { HttpError } from '../../core/errors.js';
+import { config } from '../../core/config/index.js';
+
 /**
- * A system-level interceptor to handle basic authentication.
- * It checks for a token and attaches a mock user object to the context.
+ * A production-ready interceptor that validates a JWT Bearer token.
+ * It verifies the token and fetches the fresh user profile and roles.
  */
 export default class AuthenticationInterceptor {
-  /**
-   * This method runs BEFORE the main route handler.
-   * @param {object} context - The request context object.
-   */
-  async preHandle(context) {
-    const { req } = context;
-    const token = req.headers['authorization'];
-
-    if (!token || !token.startsWith('Bearer ')) {
-      // In a real app, we'd throw an error to stop the request.
-      // throw new AuthenticationError('Missing or invalid Bearer token', 401);
-      console.warn('[AUTH] ⚠️ No Bearer token found. Proceeding without authentication.');
-      return;
+  constructor({ accessManagementService }) {
+    if (!accessManagementService) {
+      throw new Error("AuthenticationInterceptor requires an 'accessManagementService'.");
     }
-
-    // In a real app, we would validate the token against a service.
-    // For now, we'll just mock a user based on the token.
-    const mockUser = {
-      id: `user-${token.split(' ')[1]}`,
-      email: `user-${token.split(' ')[1]}@example.com`,
-      roles: ['editor'],
-    };
-
-    // Attach the user to the context for downstream interceptors and services to use.
-    context.user = mockUser;
-    console.log(`[AUTH] ✅ Authenticated user: ${mockUser.email}`);
+    this.service = accessManagementService;
   }
 
-  // This interceptor doesn't need to do anything after the request.
-  // async postHandle(context) {}
+  async preHandle(context) {
+    const { req } = context;
+    const authHeader = req.headers['authorization'];
+
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      throw new HttpError('Authentication token is required.', 401);
+    }
+
+    const token = authHeader.split(' ')[1];
+
+    try {
+      // 1. Verify the token's signature and expiration
+      const decoded = jwt.verify(token, config.JWT_SECRET);
+      
+      if (typeof decoded === 'string' || !decoded.userId) {
+        throw new Error('Invalid token payload');
+      }
+
+      // 2. Fetch the FRESH user data and roles from the service.
+      // This is crucial to ensure the user still exists and their roles are up-to-date.
+      const user = await this.service.getUserWithRoles(decoded.userId);
+
+      if (!user) {
+        throw new HttpError('User not found.', 401);
+      }
+
+      // 3. Attach the fresh, trusted user object to the context.
+      context.user = user;
+
+    } catch (error) {
+      // Handle specific JWT errors with a clear message
+      if (error.name === 'TokenExpiredError') {
+        throw new HttpError('Your session has expired. Please log in again.', 401);
+      }
+      if (error.name === 'JsonWebTokenError') {
+        throw new HttpError('Invalid authentication token.', 401);
+      }
+      // Re-throw other unexpected errors
+      throw error;
+    }
+  }
 }
