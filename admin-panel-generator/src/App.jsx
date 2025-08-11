@@ -1,5 +1,5 @@
-import React from 'react';
-import { Routes, Route } from 'react-router-dom';
+import React, { useEffect } from 'react';
+import { Routes, Route, useNavigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { AnimatePresence } from 'framer-motion';
 
@@ -9,39 +9,36 @@ import { RenderEngine } from './runtime/RenderEngine';
 import { GlobalFormModal } from './runtime/ComponentLibrary';
 import { AppLoader, AppError } from './components/AppStatus';
 
-/**
- * The main App component. It orchestrates the providers and routing,
- * while delegating compilation logic to the `useCompiler` hook.
- */
-function App() {
+import { ProtectedRoute } from './components/ProtectedRoute';
+import { LoginPage } from './pages/LoginPage';
+
+
+function AdminPanelLayout() {
   const { ir, error, isLoading } = useCompiler();
+  const navigate = useNavigate();
 
-  if (isLoading) {
-    return <AppLoader />;
-  }
+  // Listen for the custom 'logout' event from the ApiService
+  useEffect(() => {
+      const handleLogout = () => navigate('/login');
+      window.addEventListener('logout', handleLogout);
+      return () => window.removeEventListener('logout', handleLogout);
+  }, [navigate]);
 
-  if (error) {
-    return <AppError error={error} />;
-  }
-  
-  // A final guard in case the IR is somehow null after loading.
-  if (!ir) {
-    return <AppError error="Compiler returned empty UI definition." />;
-  }
+  if (isLoading) return <AppLoader />;
+  if (error) return <AppError error={error} />;
+  if (!ir) return <AppError error="Compiler returned empty UI definition." />;
 
+  // This is the protected part of the app
   return (
     <AppRuntimeProvider>
       <Toaster position="top-right" toastOptions={{ duration: 4000 }} />
-      <AnimatePresence>
-        <GlobalFormModal />
-      </AnimatePresence>
+      <AnimatePresence><GlobalFormModal /></AnimatePresence>
 
       <Routes>
         <Route path="/" element={<RenderEngine ir={ir} />}>
           <Route index element={
-            <div style={{ textAlign: 'center', paddingTop: '4rem', color: '#666' }}>
+            <div style={{ textAlign: 'center', paddingTop: '4rem' }}>
               <h2>Welcome to the Admin Panel</h2>
-              <p>Please select a resource from the navigation menu to begin.</p>
             </div>
           }/>
           {ir.props.routes.map(route => (
@@ -55,6 +52,27 @@ function App() {
         </Route>
       </Routes>
     </AppRuntimeProvider>
+  );
+}
+
+
+/**
+ * The main App component. It orchestrates the providers and routing,
+ * while delegating compilation logic to the `useCompiler` hook.
+ */
+function App() {
+  return (
+    <Routes>
+      <Route path="/login" element={<LoginPage />} />
+      <Route 
+        path="/*" 
+        element={
+          <ProtectedRoute>
+            <AdminPanelLayout />
+          </ProtectedRoute>
+        } 
+      />
+    </Routes>
   );
 }
 

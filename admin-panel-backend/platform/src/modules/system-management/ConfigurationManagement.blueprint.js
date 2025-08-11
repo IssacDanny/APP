@@ -29,12 +29,15 @@ export default {
           // A dedicated action to update a variable.
           // The UI's data table will call this for the inline edit.
           {
-            type: 'simpleApiAction',
+            type: 'form',
             id: 'update-config',
             name: 'Update', // This name is not user-facing
             target: 'item', // This is an action on a specific row
             method: 'PUT',
             endpoint: '/system/configuration', // The body will contain the key/value pair
+            formSchema: {
+              schema: { type: 'object' } 
+            }
           },
         ],
       },
@@ -45,7 +48,7 @@ export default {
       path: '/',
       method: 'GET',
       handler: 'configurationAdapter.getAll',
-      interceptors: ['monitoring', { name: 'rbac', options: { allowedRoles: ['admin'] } }],
+      interceptors: ['authentication', 'monitoring', { name: 'rbac', options: { allowedRoles: ['admin'] } }],
     },
     {
       path: '/',

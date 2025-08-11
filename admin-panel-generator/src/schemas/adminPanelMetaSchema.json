@@ -28,14 +28,20 @@
     "topLevelResourceGroup": {
       "allOf": [
         { "$ref": "#/definitions/baseResourceGroup" },
-        { "properties": { "display": { "const": "section" } } }
+        { 
+          "type": "object",
+          "properties": { "display": { "const": "section" } } 
+        }
       ]
     },
 
     "nestedResourceGroup": {
       "allOf": [
         { "$ref": "#/definitions/baseResourceGroup" },
-        { "properties": { "display": { "const": "folder" } } }
+        { 
+          "type": "object",
+          "properties": { "display": { "const": "folder" } } 
+        }
       ]
     },
 
@@ -181,7 +187,7 @@
         "id": { "type": "string" },
         "name": { "type": "string" },
         "target": { "enum": ["global", "item", "none"] },
-        "method": { "enum": ["POST", "DELETE", "GET"] },
+        "method": { "enum": ["POST", "DELETE", "GET", "PUT", "PATCH"] },
         "endpoint": { "type": "string"},
         "confirmationText": { "type": "string" }
       },

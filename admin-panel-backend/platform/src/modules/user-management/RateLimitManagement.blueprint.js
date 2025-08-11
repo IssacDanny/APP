@@ -27,7 +27,7 @@ export default {
       path: '/status',
       method: 'GET',
       handler: 'rateLimitAdapter.getStatus', // A placeholder handler
-      interceptors: [{ name: 'rbac', options: { allowedRoles: ['admin'] } }],
+      interceptors: ['authentication', { name: 'rbac', options: { allowedRoles: ['admin'] } }],
     },
   ],
 };

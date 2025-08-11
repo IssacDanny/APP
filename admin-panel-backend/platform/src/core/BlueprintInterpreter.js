@@ -47,9 +47,30 @@ export class BlueprintInterpreter {
   }
 
   async _processBlueprint(filePath) {
-    // This method remains unchanged.
-    const { default: blueprint } = await import(pathToFileURL(filePath).href);
-    this.aggregatedSchemas.push({ ...blueprint.uiSchema, resourcePrefix: blueprint.resource.prefix });
+    console.log(`\nInterpreting blueprint: ${path.basename(filePath)}`);
+    const fileUrl = pathToFileURL(filePath).href;
+    const { default: blueprint } = await import(fileUrl);
+
+    // --- THE FIX IS HERE ---
+    // Check if the blueprint is intended to be visible in the UI.
+    // Headless blueprints (like Auth) might not have a title or icon.
+    if (blueprint.uiSchema && blueprint.uiSchema.title) {
+      const topLevelResourceGroup = {
+        type: 'resourceGroup',
+        id: blueprint.resource.name,
+        title: blueprint.uiSchema.title,
+        icon: blueprint.uiSchema.icon,
+        display: 'section',
+        items: blueprint.uiSchema.items,
+      };
+
+      this.aggregatedSchemas.push(topLevelResourceGroup);
+      console.log(`  - Registered UI Schema for resource group: ${blueprint.resource.name}`);
+    } else {
+      console.log(`  - Skipping UI Schema for headless blueprint: ${blueprint.resource.name}`);
+    }
+
+    // Always process the routes, regardless of whether it has a UI.
     const router = express.Router({ strict: false });
     for (const route of blueprint.routes) {
       const requestLifecycleHandler = this._createRequestLifecycleHandler(route);
@@ -60,16 +81,15 @@ export class BlueprintInterpreter {
 
   _createRequestLifecycleHandler(route) {
     const interceptors = this._resolveInterceptors(route);
-    
-    // --- REFACTORED ---
-    // The interpreter no longer knows HOW to create the handler,
-    // it just asks the factory to create it.
     const mainHandler = this.handlerFactory.createHandler(route, this.container);
 
     return async (req, res, next) => {
-      // The rest of the lifecycle logic remains exactly the same.
-      const context = { req, res, user: null, payloads: {}, result: null, error: null };
+      // --- REFINEMENT ---
+      // Initialize context with user from req, if any previous middleware set it.
+      const context = { req, res, user: req.user || null, payloads: {}, result: null, error: null };
+
       this._registerPostHandlers(res, interceptors, context);
+      
       try {
         await this._runPreHandlers(interceptors, context);
         const result = await mainHandler(context);
@@ -110,10 +130,23 @@ export class BlueprintInterpreter {
     });
   }
   
+  /**
+   * Executes the preHandle hook for all relevant interceptors.
+   * @private
+   */
   async _runPreHandlers(interceptors, context) {
     for (const { instance, options } of interceptors) {
       if (instance.preHandle) {
         await instance.preHandle(context, options);
+        
+        // --- THE FIX IS HERE ---
+        // After an interceptor runs its preHandle, we check if it has modified
+        // the 'user' property on the context. If it has, we persist this
+        // change back to the main Express 'req' object. This makes the
+        // updated state available to all subsequent parts of the request lifecycle.
+        if (context.user) {
+          context.req.user = context.user;
+        }
       }
     }
   }

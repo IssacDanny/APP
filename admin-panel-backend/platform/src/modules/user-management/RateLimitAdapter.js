@@ -4,7 +4,7 @@ export default class RateLimitAdapter {
   }
 
   // Placeholder method for the UI
-  async getStatus() {
+  async getStatus(context) {
     // In a real implementation, this would call this.store.getStats()
     return {
       response: [{ message: 'Rate limit monitoring is active.' }],

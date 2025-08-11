@@ -2,15 +2,14 @@ import React, { createContext, useState, useContext, useCallback, useMemo } from
 import { useNavigate } from 'react-router-dom';
 import jsonata from 'jsonata';
 import { toast } from 'react-hot-toast';
+import { useApiService } from './ApiServiceContext';
 
 const API_HOST = import.meta.env.VITE_API_HOST || 'http://localhost:4000';
 const AppRuntimeContext = createContext(null);
 
-// apiClient function can remain the same
-async function apiClient(endpoint, { body, ...customOptions } = {}) { /* ... */ }
-
 export function AppRuntimeProvider({ children }) {
   const navigate = useNavigate();
+  const api = useApiService();
   const [modalState, setModalState] = useState({ isOpen: false, config: null, initialData: null });
   const [dataVersion, setDataVersion] = useState(1);
   const refreshData = () => setDataVersion(v => v + 1);
@@ -30,21 +29,9 @@ export function AppRuntimeProvider({ children }) {
     if (itemData?.id && endpoint.includes('{id}')) {
       endpoint = endpoint.replace('{id}', itemData.id);
     }
-    let body = formData;
-    if (actionConfig.payloadTransform && formData) {
-      try { body = await jsonata(actionConfig.payloadTransform).evaluate(formData); }
-      catch (e) { toast.error(`Data transform error: ${e.message}`); return false; }
-    }
+
     try {
-      const response = await fetch(`${API_HOST}${endpoint}`, {
-        method, headers: { 'Content-Type': 'application/json' },
-        body: body ? JSON.stringify(body) : null,
-      });
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ message: response.statusText }));
-        throw new Error(errorData.message || `API Error: ${response.statusText}`);
-      }
-      if (response.status !== 204) { await response.json(); }
+      await api.request(endpoint, { method, body: formData });
       toast.success('Action successful!');
       refreshData();
       closeModal();
@@ -53,7 +40,7 @@ export function AppRuntimeProvider({ children }) {
       toast.error(`Error: ${e.message}`);
       return false;
     }
-  }, [closeModal]);
+  }, [api, closeModal, refreshData]);
 
   const handleNavigationAction = useCallback((actionConfig) => {
     const { targetResource, targetId, targetView } = actionConfig;

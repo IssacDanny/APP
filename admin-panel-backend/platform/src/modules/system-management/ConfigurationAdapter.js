@@ -1,29 +1,25 @@
-// This generic adapter defines the API handlers.
-// It relies on a 'configurationService' being injected by the developer.
 export default class ConfigurationAdapter {
   constructor({ configurationService }) {
-    if (!configurationService) {
-      throw new Error("ConfigurationAdapter requires a 'configurationService' to be registered in the container.");
-    }
     this.service = configurationService;
   }
 
-  // Corresponds to GET /
-  async getAll() {
+  // --- FIX #1: This method's signature was inconsistent. ---
+  // It should only accept the context object, just like our newer adapters.
+  async getAll(context) { 
     const items = await this.service.getAll();
     return { response: items };
   }
 
-  // Corresponds to PUT /
-  async update(req, context) {
-    const { key, value } = req.body; // The UI will send the full row, we extract what we need.
+  // --- FIX #2: This method's signature and logic were the source of the crash. ---
+  async update(context) { 
+    const { req, user } = context; // Get req from the context object
+    const { key, value } = req.body; // Now req.body will be defined
     const updatedItem = await this.service.update(key, value);
     
-    // For our logic-aware AuditingInterceptor
     return {
       response: updatedItem,
       payloads: {
-        audit: { message: `User ${context.user.email} updated configuration key '${key}'.` },
+        audit: { message: `User ${user.email} updated configuration key '${key}'.` },
       },
     };
   }

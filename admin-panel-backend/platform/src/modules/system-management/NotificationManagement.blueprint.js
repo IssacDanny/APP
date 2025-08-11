@@ -50,13 +50,13 @@ export default {
       path: '/templates',
       method: 'GET',
       handler: 'notificationAdapter.getTemplates',
-      interceptors: [{ name: 'rbac', options: { allowedRoles: ['admin', 'support-manager'] } }],
+      interceptors: ['authentication', { name: 'rbac', options: { allowedRoles: ['admin', 'support-manager'] } }],
     },
     {
       path: '/history',
       method: 'GET',
       handler: 'notificationAdapter.getHistory',
-      interceptors: [{ name: 'rbac', options: { allowedRoles: ['admin', 'support-manager'] } }],
+      interceptors: ['authentication', { name: 'rbac', options: { allowedRoles: ['admin', 'support-manager'] } }],
     },
   ],
 };

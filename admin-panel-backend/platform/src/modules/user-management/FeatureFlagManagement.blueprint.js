@@ -25,12 +25,15 @@ export default {
         },
         actions: [
           { // The action behind the boolean toggle switch in the table
-            type: 'simpleApiAction',
+            type: 'form',
             id: 'toggle-flag',
             name: 'Toggle',
             target: 'item',
             method: 'PUT',
             endpoint: '/security/feature-flags/{name}/toggle',
+            formSchema: {
+              schema: { type: 'object' }
+            }
           },
         ],
       },
@@ -41,7 +44,7 @@ export default {
       path: '/',
       method: 'GET',
       handler: 'featureFlagAdapter.getFlags',
-      interceptors: [{ name: 'rbac', options: { allowedRoles: ['admin', 'product-manager'] } }],
+      interceptors: ['authentication', { name: 'rbac', options: { allowedRoles: ['admin', 'product-manager'] } }],
     },
     {
       path: '/:flagName/toggle',

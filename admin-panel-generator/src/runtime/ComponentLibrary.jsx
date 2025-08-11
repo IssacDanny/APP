@@ -9,7 +9,7 @@ import { FiShoppingCart, FiPackage, FiFileText, FiUsers, FiGrid, FiChevronRight,
 import { useAppRuntime } from '../context/AppRuntimeContext';
 import { RenderEngine } from './RenderEngine';
 import { Animated } from './Animated';
-import { effectLibrary } from './effectLibrary';
+import { useApiService } from '../context/ApiServiceContext'; 
 
 export const componentMap = {};
 
@@ -213,13 +213,12 @@ componentMap.ActionButton = ActionButton;
 export const DataTable = ({ columns, resourceEndpoint, itemActions }) => {
   const [data, setData] = useState([]);
   const { dataVersion } = useAppRuntime();
+  const api = useApiService();
 
   useEffect(() => {
     setData([]);
-    fetch(`${API_HOST}${resourceEndpoint}`)
-      .then(res => res.json())
-      .then(setData);
-  }, [resourceEndpoint, dataVersion]);
+    api.get(resourceEndpoint).then(setData).catch(err => console.error(err));
+  }, [resourceEndpoint, dataVersion, api]);
 
   const gridTemplateColumns = `${columns.map(() => '1fr').join(' ')} ${itemActions.length > 0 ? 'auto' : ''}`;
 
@@ -302,16 +301,19 @@ export const DetailView = ({ fields, resourceEndpoint, resourceName }) => {
   const { itemId } = useParams();
   const [item, setItem] = useState(null);
   const [loading, setLoading] = useState(true);
+  const api = useApiService();
 
   useEffect(() => {
     setLoading(true);
-    fetch(`${API_HOST}${resourceEndpoint}/${itemId}`)
-      .then(res => res.json())
+     api.get(`${resourceEndpoint}/${itemId}`)
       .then(data => {
         setItem(data);
         setLoading(false);
+      }).catch(err => {
+        console.error(err);
+        setLoading(false);
       });
-  }, [resourceEndpoint, itemId]);
+  }, [resourceEndpoint, itemId, api]);
 
   if (loading) return <p>Loading details...</p>;
   if (!item) return <p>Item not found.</p>;

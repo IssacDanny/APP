@@ -19,18 +19,13 @@ export default class MonitoringInterceptor {
     const endTime = process.hrtime.bigint();
     const durationMs = Number(endTime - startTime) / 1e6;
 
-    // --- FIX: NORMALIZE THE PATH ---
-    // Combine baseUrl and path, then remove any trailing slash if it's not the root path.
-    let fullPath = req.baseUrl + req.path;
-    if (fullPath.length > 1 && fullPath.endsWith('/')) {
-      fullPath = fullPath.slice(0, -1);
-    }
-    // --- END OF FIX ---
+    // --- FIX #4: Make the interceptor resilient to failures ---
+    const statusCode = error ? (error.statusCode || 500) : (result ? result.status : 500);
 
     this.service.recordMetric({
       method: req.method,
-      path: fullPath, // Use the new normalized path
-      statusCode: error ? (error.statusCode || 500) : result.status,
+      path: req.baseUrl + req.path,
+      statusCode: statusCode, // Use the safe status code
       durationMs,
       timestamp: new Date().toISOString(),
     });

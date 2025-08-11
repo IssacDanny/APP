@@ -390,3 +390,31 @@ body {
   max-width: 800px;
   overflow-x: auto;
 }
+
+.login-page {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  background-color: var(--color-background);
+}
+.login-form-container {
+  width: 100%;
+  max-width: 400px;
+  padding: 2.5rem;
+  background-color: var(--color-surface);
+  border-radius: var(--border-radius-md);
+  box-shadow: var(--box-shadow-md);
+}
+.login-form-container h2 {
+  text-align: center;
+  margin-top: 0;
+  margin-bottom: 2rem;
+  color: var(--color-text-header);
+}
+.login-form-container .btn {
+  width: 100%;
+  padding-top: 12px;
+  padding-bottom: 12px;
+  margin-top: 1rem;
+}

@@ -8,13 +8,13 @@ export default class NotificationAdapter {
   }
 
   // Corresponds to GET /templates
-  async getTemplates() {
+  async getTemplates(context) {
     const templates = await this.service.getTemplates();
     return { response: templates };
   }
 
   // Corresponds to GET /history
-  async getHistory() {
+  async getHistory(context) {
     const history = await this.service.getHistory();
     return { response: history };
   }

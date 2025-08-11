@@ -8,7 +8,7 @@ export default class MonitoringAdapter {
   }
 
   // Corresponds to GET /metrics
-  async getMetrics() {
+  async getMetrics(context) {
     const metrics = await this.service.getMetrics();
     return { response: metrics };
   }

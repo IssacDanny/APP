@@ -34,7 +34,7 @@ export default {
       path: '/metrics',
       method: 'GET',
       handler: 'monitoringAdapter.getMetrics',
-      interceptors: [{ name: 'rbac', options: { allowedRoles: ['admin'] } }],
+      interceptors: ['authentication', { name: 'rbac', options: { allowedRoles: ['admin'] } }],
     },
   ],
 };
