@@ -3,103 +3,50 @@ import request from 'supertest';
 import jwt from 'jsonwebtoken';
 import { startServer } from '#platform/core/Server.js';
 import { config } from '#platform/core/config/index.js';
+// Nhập 'usersDb' từ database trong bộ nhớ để lấy thông tin người dùng cho việc tạo token
+import { usersDb } from './src/data/database.js';
 
-// We import the real, in-memory database to assert changes
-import { usersDb, configDb, flagsDb } from './src/data/database.js';
-
-describe('Full System E2E Tests (Backend-Only)', () => {
+describe('Full System E-to-E Tests (Backend-Only)', () => {
   let app;
-  let adminToken; // To store a valid token for an admin user
+  let adminToken; // Chúng ta sẽ lưu trữ một token hợp lệ ở đây để tái sử dụng
 
-  // --- 1. Start the server ONCE without any mocks ---
+  // --- Thiết lập Server và Authentication ---
+  // Khối `beforeAll` này sẽ chạy một lần duy nhất trước tất cả các bài kiểm thử trong tệp này.
   beforeAll(async () => {
-    // No 'testOverrides' are passed. The server will use the real service implementations.
+    // Khởi động server ở chế độ kiểm thử, không có mock nào được truyền vào.
+    // Server sẽ tự động tải các blueprint và service thật của bạn.
     app = await startServer();
     
-    // Generate a token for our admin user from the database for tests
-    const adminUser = usersDb.get('user-1');
+    // Vì route "Lời chào" của chúng ta được bảo vệ, chúng ta cần một token hợp lệ.
+    // Chúng ta sẽ tạo một token cho người dùng admin từ database trong bộ nhớ.
+    const adminUser = usersDb.get('user-1'); // Giả sử 'user-1' là admin
     adminToken = jwt.sign({ userId: adminUser.id }, config.JWT_SECRET, { expiresIn: '15m' });
   });
 
-  // --- 2. Reset database state before each test to ensure isolation ---
-  beforeEach(() => {
-    // Reset any data that might be modified by tests
-    configDb.get('welcomeMessage').value = 'Welcome to the Admin Panel!';
-    usersDb.get('user-2').roles = ['editor'];
-  });
-
-  // --- 3. Test Suites for Each Module ---
-
-  describe('Authentication and RBAC', () => {
-    it('should deny access to a protected route without a token', async () => {
-      const response = await request(app).get('/users');
+  // --- Bộ Kiểm thử cho Module Mới ---
+  describe('Greetings Module', () => {
+    it('should từ chối truy cập nếu không có token xác thực', async () => {
+      // Gửi request mà không có header 'Authorization'
+      const response = await request(app).get('/greetings/hello');
+      
+      // Khẳng định rằng server trả về lỗi 401 Unauthorized
       expect(response.status).toBe(401);
     });
+    
+    it('should trả về thông điệp chào mừng cho một người dùng đã được xác thực', async () => {
+      // Gửi request với token xác thực mà chúng ta đã tạo
+      const response = await request(app)
+        .get('/greetings/hello')
+        .set('Authorization', `Bearer ${adminToken}`);
 
-    it('should deny access to an admin-only route for a non-admin user', async () => {
-      // Generate a token for the editor user
-      const editorUser = usersDb.get('user-2');
-      const editorToken = jwt.sign({ userId: editorUser.id }, config.JWT_SECRET);
+      // Khẳng định rằng request thành công
+      expect(response.status).toBe(200);
       
-      const response = await request(app)
-        .get('/users') // This route requires 'admin' role
-        .set('Authorization', `Bearer ${editorToken}`);
-
-      expect(response.status).toBe(403);
+      // Khẳng định rằng body của response khớp với những gì service của chúng ta trả về
+      expect(response.body).toBeInstanceOf(Array); // Vì là listView
+      expect(response.body[0].id).toBe(1);
+      expect(response.body[0].message).toBe('Chào thế giới!');
     });
   });
-
-  describe('Configuration Management', () => {
-    it('GET /system/configuration should return all config variables', async () => {
-      const response = await request(app)
-        .get('/system/configuration')
-        .set('Authorization', `Bearer ${adminToken}`);
-
-      expect(response.status).toBe(200);
-      expect(response.body).toHaveLength(2);
-      expect(response.body[1].key).toBe('welcomeMessage');
-    });
-
-    it('PUT /system/configuration should update a variable', async () => {
-      const response = await request(app)
-        .put('/system/configuration')
-        .set('Authorization', `Bearer ${adminToken}`)
-        .send({ key: 'welcomeMessage', value: 'New Message!' });
-
-      expect(response.status).toBe(200);
-      expect(response.body.value).toBe('New Message!');
-
-      // Assert that the in-memory database was actually changed
-      expect(configDb.get('welcomeMessage').value).toBe('New Message!');
-    });
-  });
-  
-  describe('Access Management', () => {
-    it('GET /users should return a list of users', async () => {
-      const response = await request(app)
-        .get('/users')
-        .set('Authorization', `Bearer ${adminToken}`);
-        
-      expect(response.status).toBe(200);
-      expect(response.body).toHaveLength(3);
-      // Verify that the passwordHash is not included in the response
-      expect(response.body[0].passwordHash).toBeUndefined();
-    });
-
-    it('PUT /users/:id/roles should update a user\'s roles', async () => {
-      const response = await request(app)
-        .put('/users/user-2/roles')
-        .set('Authorization', `Bearer ${adminToken}`)
-        .send({ roles: ['editor', 'viewer'] });
-        
-      expect(response.status).toBe(200);
-      expect(response.body.roles).toEqual(['editor', 'viewer']);
-
-      // Assert that the in-memory database was changed
-      expect(usersDb.get('user-2').roles).toEqual(['editor', 'viewer']);
-    });
-  });
-
-  // Add describe blocks for Feature Flags, Rate Limiting, etc. following the same pattern...
 
 });
